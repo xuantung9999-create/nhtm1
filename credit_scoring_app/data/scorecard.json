@@ -1,0 +1,232 @@
+{
+  "product": {
+    "name": "Vay tiêu dùng mua xe máy trả góp",
+    "product_code": "motorbike_loan",
+    "loan_amount_range": [10000000, 100000000],
+    "term_range_months": [6, 36],
+    "interest_rate_range_annual": [0.18, 0.28],
+    "min_down_payment_ratio": 0.20
+  },
+  "scoring_system": {
+    "max_score": 1000,
+    "grade_thresholds": [
+      {"grade": "AA", "min_score": 800, "decision": "approved_priority", "interest_rate_annual": 0.20, "risk_level": "very_low"},
+      {"grade": "A",  "min_score": 700, "decision": "approved",           "interest_rate_annual": 0.22, "risk_level": "low"},
+      {"grade": "BBB","min_score": 650, "decision": "approved_conditional","interest_rate_annual": 0.25, "risk_level": "medium"},
+      {"grade": "BB", "min_score": 500, "decision": "manual_review",      "interest_rate_annual": 0.28, "risk_level": "medium_high"},
+      {"grade": "B",  "min_score": 0,   "decision": "rejected",           "interest_rate_annual": null, "risk_level": "high"}
+    ]
+  },
+  "hard_rules": [
+    {"id": "age_min", "description": "Tuổi >= 20 tại thời điểm vay", "type": "numeric_min", "field": "age", "threshold": 20},
+    {"id": "age_max", "description": "Tuổi <= 60 tại thời điểm vay", "type": "numeric_max", "field": "age", "threshold": 60},
+    {"id": "min_income", "description": "Thu nhập tháng >= 5.000.000 VNĐ", "type": "numeric_min", "field": "monthly_income_vnd", "threshold": 5000000},
+    {"id": "min_employment", "description": "Thời gian công tác >= 3 tháng", "type": "numeric_min", "field": "employment_duration_months", "threshold": 3},
+    {"id": "cic_not_bad", "description": "Không có nợ nhóm 3, 4, 5 trong 24 tháng", "type": "not_in", "field": "credit_history_cic", "blocked_values": ["group3", "group4", "group5"]},
+    {"id": "dti_max", "description": "DTI sau khi vay <= 60%", "type": "numeric_max", "field": "dti_after_loan", "threshold": 0.60}
+  ],
+  "scoring_groups": {
+    "credit_history": {
+      "name": "Lịch sử tín dụng",
+      "weight": 0.35,
+      "max_points": 350,
+      "variables": {
+        "credit_history_cic": {
+          "name": "Lịch sử CIC 24 tháng",
+          "max_points": 120,
+          "type": "categorical",
+          "bins": {
+            "no_history": 40,
+            "group1_all_ontime": 120,
+            "group2_once": 60,
+            "group2_multiple": 20
+          }
+        },
+        "active_loans_count": {
+          "name": "Số khoản vay đang hoạt động",
+          "max_points": 80,
+          "type": "numeric_range",
+          "bins": [
+            {"max": 0, "points": 60},
+            {"max": 2, "points": 80},
+            {"max": 4, "points": 40},
+            {"max": 999, "points": 10}
+          ]
+        },
+        "dti_after_loan": {
+          "name": "DTI sau khi vay mới",
+          "max_points": 100,
+          "type": "numeric_range",
+          "bins": [
+            {"max": 0.30, "points": 100},
+            {"max": 0.45, "points": 70},
+            {"max": 0.55, "points": 40},
+            {"max": 0.60, "points": 15}
+          ]
+        },
+        "credit_history_length_years": {
+          "name": "Thời gian có lịch sử tín dụng",
+          "max_points": 50,
+          "type": "numeric_range",
+          "bins": [
+            {"max": 1, "points": 20},
+            {"max": 3, "points": 35},
+            {"max": 99, "points": 50}
+          ]
+        }
+      }
+    },
+    "income": {
+      "name": "Thu nhập & việc làm",
+      "weight": 0.30,
+      "max_points": 300,
+      "variables": {
+        "monthly_income_vnd": {
+          "name": "Thu nhập hàng tháng",
+          "max_points": 100,
+          "type": "numeric_range",
+          "bins": [
+            {"max": 7000000, "points": 20},
+            {"max": 10000000, "points": 40},
+            {"max": 15000000, "points": 60},
+            {"max": 30000000, "points": 80},
+            {"max": 999999999999, "points": 100}
+          ]
+        },
+        "employment_contract": {
+          "name": "Loại hợp đồng lao động",
+          "max_points": 70,
+          "type": "categorical",
+          "bins": {
+            "permanent": 70,
+            "fixed_gte_12m": 55,
+            "fixed_lt_12m": 30,
+            "self_employed_licensed": 40,
+            "freelance": 15
+          }
+        },
+        "employment_duration_months": {
+          "name": "Thời gian làm việc hiện tại",
+          "max_points": 60,
+          "type": "numeric_range",
+          "bins": [
+            {"max": 6, "points": 10},
+            {"max": 12, "points": 25},
+            {"max": 36, "points": 45},
+            {"max": 9999, "points": 60}
+          ]
+        },
+        "salary_method": {
+          "name": "Hình thức nhận lương",
+          "max_points": 70,
+          "type": "categorical",
+          "bins": {
+            "bank_transfer": 70,
+            "cash_verified": 40,
+            "cash_unverified": 15
+          }
+        }
+      }
+    },
+    "personal": {
+      "name": "Nhân thân",
+      "weight": 0.20,
+      "max_points": 200,
+      "variables": {
+        "age": {
+          "name": "Tuổi",
+          "max_points": 50,
+          "type": "numeric_range",
+          "bins": [
+            {"max": 24, "points": 25},
+            {"max": 29, "points": 40},
+            {"max": 45, "points": 50},
+            {"max": 55, "points": 40},
+            {"max": 99, "points": 25}
+          ]
+        },
+        "marital_status": {
+          "name": "Tình trạng hôn nhân",
+          "max_points": 30,
+          "type": "categorical",
+          "bins": {
+            "married": 30,
+            "single": 20,
+            "divorced_widowed": 15
+          }
+        },
+        "dependents": {
+          "name": "Số người phụ thuộc",
+          "max_points": 40,
+          "type": "numeric_range",
+          "bins": [
+            {"max": 1, "points": 40},
+            {"max": 2, "points": 30},
+            {"max": 3, "points": 20},
+            {"max": 99, "points": 10}
+          ]
+        },
+        "education": {
+          "name": "Trình độ học vấn",
+          "max_points": 40,
+          "type": "categorical",
+          "bins": {
+            "postgrad": 40,
+            "bachelor": 30,
+            "highschool": 20,
+            "below_highschool": 10
+          }
+        },
+        "residency_status": {
+          "name": "Tình trạng cư trú",
+          "max_points": 40,
+          "type": "categorical",
+          "bins": {
+            "owner": 40,
+            "family_home": 30,
+            "renting_gte_2y": 20,
+            "renting_lt_2y": 10
+          }
+        }
+      }
+    },
+    "assets": {
+      "name": "Tài sản sở hữu",
+      "weight": 0.15,
+      "max_points": 150,
+      "variables": {
+        "real_estate": {
+          "name": "Bất động sản đứng tên",
+          "max_points": 60,
+          "type": "categorical",
+          "bins": {
+            "owned_titled": 60,
+            "family_shared": 35,
+            "none": 10
+          }
+        },
+        "vehicle": {
+          "name": "Phương tiện sở hữu",
+          "max_points": 40,
+          "type": "categorical",
+          "bins": {
+            "car": 40,
+            "motorbike": 20,
+            "none": 5
+          }
+        },
+        "savings_vnd": {
+          "name": "Tiền gửi tiết kiệm",
+          "max_points": 50,
+          "type": "numeric_range",
+          "bins": [
+            {"max": 10000000, "points": 5},
+            {"max": 30000000, "points": 20},
+            {"max": 100000000, "points": 35},
+            {"max": 999999999999, "points": 50}
+          ]
+        }
+      }
+    }
+  }
+}
