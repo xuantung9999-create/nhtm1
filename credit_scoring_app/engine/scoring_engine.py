@@ -41,7 +41,7 @@ class HardRulesCheckResult:
         return [c for c in self.checks if not c.passed]
 
 
-@dataclass
+
 class VariableScore:
     """Điểm của một biến cụ thể."""
     variable_key: str
@@ -88,6 +88,9 @@ class GradeResult:
     min_score_required: int
     interest_rate_min: float | None = None
     interest_rate_max: float | None = None
+    interest_rate_min: float | None = None
+    interest_rate_max: float | None = None
+    risk_premium: float | None = None
     risk_premium: float | None = None
 
 
