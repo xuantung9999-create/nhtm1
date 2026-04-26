@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>UI v3 Preview - Credit Scoring App</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #F5F7FA;
+    padding: 2rem;
+    color: #0A2540;
+}
+.preview-section {
+    max-width: 1200px;
+    margin: 0 auto 3rem;
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 2px 20px rgba(10, 37, 64, 0.04);
+}
+.preview-label {
+    background: #0A2540;
+    color: white;
+    display: inline-block;
+    padding: 0.4rem 1rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+}
+.feedback-tag {
+    background: #C9A961;
+    color: white;
+    display: inline-block;
+    padding: 0.3rem 0.7rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+}
+.meta-info {
+    background: #FDFAF2;
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    border-left: 3px solid #C9A961;
+    margin-bottom: 2rem;
+    font-size: 0.88rem;
+    color: #5A6B80;
+    line-height: 1.6;
+}
+.meta-info b { color: #0A2540; }
+.section-divider { border: none; border-top: 1px solid #E5E9F0; margin: 2.5rem 0; }
+h2.preview-h2 { font-size: 1.4rem; color: #0A2540; margin-bottom: 0.5rem; font-weight: 600; }
+h3.preview-h3 { font-size: 1.1rem; color: #0A2540; margin-bottom: 0.75rem; border-left: 3px solid #C9A961; padding-left: 0.75rem; }
+
+/* === FEEDBACK 1: Step 0.5 - Profile init === */
+.step-indicator { display: flex; align-items: center; gap: 0.5rem; color: #5A6B80; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem; }
+.step-dot { width: 6px; height: 6px; background: #C9A961; border-radius: 50%; display: inline-block; }
+
+.section-title { display: flex; align-items: center; gap: 0.5rem; border-left: 3px solid #C9A961; padding-left: 0.75rem; color: #0A2540; font-weight: 600; font-size: 1.1rem; margin: 1.5rem 0 1rem 0; }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+.form-field { }
+.form-field label { display: block; font-size: 0.85rem; color: #0A2540; font-weight: 500; margin-bottom: 0.4rem; }
+.form-field input { width: 100%; padding: 0.55rem 0.75rem; border: 1px solid #E5E9F0; border-radius: 6px; font-family: inherit; font-size: 0.9rem; color: #0A2540; }
+.form-field input:focus { outline: none; border-color: #C9A961; box-shadow: 0 0 0 2px rgba(201,169,97,0.2); }
+
+.profile-status-card { background: #FDFAF2; padding: 0.85rem 1rem; border-radius: 8px; border-left: 3px solid #C9A961; margin-top: 1.5rem; }
+.profile-status-card .label { font-size: 0.78rem; color: #5A6B80; font-weight: 500; }
+.profile-status-card .value { font-weight: 600; color: #0A2540; margin-top: 0.2rem; }
+.profile-status-card .meta { font-size: 0.78rem; color: #5A6B80; margin-top: 0.4rem; }
+
+.profile-summary { background: white; border: 1px solid #E5E9F0; border-radius: 10px; padding: 1.25rem 1.5rem; margin-top: 1.5rem; }
+.profile-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.profile-summary-grid .col-label { font-size: 0.78rem; color: #5A6B80; }
+.profile-summary-grid .col-value { font-weight: 600; color: #0A2540; margin-top: 0.2rem; }
+.profile-summary .header { font-size: 0.78rem; color: #5A6B80; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+/* === FEEDBACK 2: Dashboard Hero === */
+.dashboard-hero { background: linear-gradient(135deg, #FFFFFF 0%, #F5F7FA 100%); border: 1px solid #E5E9F0; border-top: 4px solid #0F7A5C; border-radius: 12px; padding: 2rem; margin: 1rem 0; box-shadow: 0 2px 12px rgba(10,37,64,0.06); }
+.dashboard-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; align-items: center; }
+.gauge-section { text-align: center; padding: 1rem; background: white; border-radius: 10px; border: 1px solid #E5E9F0; }
+.gauge-number { font-size: 4rem; font-weight: 700; line-height: 1; color: #0A2540; letter-spacing: -0.03em; }
+.gauge-suffix { font-size: 1.4rem; color: #5A6B80; font-weight: 400; }
+.gauge-grade { display: inline-block; background: #0A2540; color: #C9A961; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 700; font-size: 1.1rem; letter-spacing: 0.05em; margin-top: 0.75rem; }
+.gauge-label { font-size: 0.85rem; color: #5A6B80; margin-top: 0.5rem; font-weight: 500; }
+
+.status-badge { display: inline-block; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.9rem; font-weight: 600; background: #E3F4EC; color: #0F7A5C; }
+.dashboard-customer-info { font-size: 0.85rem; color: #5A6B80; margin-top: 0.6rem; }
+.dashboard-customer-info b { color: #0A2540; }
+.dashboard-customer-info code { font-family: 'Courier New', monospace; }
+
+.info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin-top: 1rem; }
+.info-item { background: white; border: 1px solid #E5E9F0; border-radius: 8px; padding: 0.85rem 1rem; }
+.info-item.gold-border { border-color: #C9A961; }
+.info-item-label { font-size: 0.75rem; color: #5A6B80; margin-bottom: 0.25rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+.info-item-value { font-size: 1.1rem; font-weight: 600; color: #0A2540; }
+.info-item-value.gold { color: #C9A961; }
+.info-item-value.success { color: #0F7A5C; }
+
+/* Quick summary 3 cards */
+.quick-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+.summary-card { background: white; border: 1px solid #E5E9F0; border-radius: 10px; padding: 1rem 1.25rem; }
+.summary-card-header { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #0A2540; margin-bottom: 0.6rem; padding-bottom: 0.6rem; border-bottom: 1px solid #E5E9F0; }
+.summary-card-header .right-text { margin-left: auto; font-weight: 500; font-size: 0.78rem; color: #0F7A5C; }
+.summary-card-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; padding: 0.25rem 0; }
+.summary-card-row .label { color: #5A6B80; font-size: 0.8rem; }
+.summary-card-row .value { color: #0A2540; font-weight: 500; }
+.summary-card-row .check-icon { font-weight: 700; }
+.summary-card-row .check-icon.pass { color: #0F7A5C; }
+.summary-card-row .check-icon.fail { color: #B33A3A; }
+
+.reason-text { font-size: 0.85rem; color: #5A6B80; line-height: 1.55; padding: 0.3rem 0; }
+
+/* === FEEDBACK 3: Rate explanation === */
+.rate-explain-card { background: linear-gradient(135deg, #FDFAF2 0%, #FFFFFF 100%); border: 1px solid #E0C988; border-radius: 10px; padding: 1.25rem 1.5rem; margin: 1rem 0; }
+.rate-explain-card .title { font-weight: 600; color: #0A2540; font-size: 1rem; margin-bottom: 0.5rem; }
+.rate-formula { background: white; border: 1px dashed #C9A961; border-radius: 6px; padding: 0.75rem 1rem; margin: 0.75rem 0; font-family: 'Courier New', monospace; font-size: 0.9rem; color: #0A2540; }
+.rate-component { display: flex; justify-content: space-between; padding: 0.4rem 0; font-size: 0.88rem; border-bottom: 1px dotted #E5E9F0; }
+.rate-component:last-child { border-bottom: 2px solid #C9A961; padding-top: 0.6rem; margin-top: 0.3rem; font-weight: 600; }
+.rate-component .label { color: #5A6B80; }
+.rate-component .value { color: #0A2540; font-weight: 500; }
+.rate-component:last-child .value { color: #C9A961; font-size: 1.05rem; }
+
+table.ref-table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.85rem; }
+table.ref-table th { background: #0A2540; color: white; padding: 0.6rem; text-align: left; font-weight: 500; }
+table.ref-table td { padding: 0.6rem; border-bottom: 1px solid #E5E9F0; color: #0A2540; }
+table.ref-table tr.current { background: #FDFAF2; font-weight: 600; }
+
+/* === FEEDBACK 4: Slider === */
+.slider-container { background: white; border: 1px solid #E5E9F0; border-radius: 10px; padding: 1.5rem; margin: 1rem 0; }
+.slider-row { display: grid; grid-template-columns: 3fr 1fr; gap: 1.5rem; align-items: center; }
+.slider-track { position: relative; height: 8px; background: #E5E9F0; border-radius: 4px; margin: 1.5rem 0 0.5rem 0; }
+.slider-fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #C9A961, #E0C988); border-radius: 4px; }
+.slider-knob { position: absolute; top: -6px; width: 20px; height: 20px; background: white; border: 3px solid #C9A961; border-radius: 50%; box-shadow: 0 2px 8px rgba(201,169,97,0.3); cursor: pointer; }
+.slider-labels { display: flex; justify-content: space-between; color: #5A6B80; font-size: 0.78rem; }
+.slider-current { background: #FDFAF2; border: 1px solid #E0C988; border-radius: 8px; padding: 0.85rem 1rem; text-align: center; }
+.slider-current .label { font-size: 0.78rem; color: #5A6B80; }
+.slider-current .value { font-size: 1.2rem; font-weight: 600; color: #0F7A5C; margin-top: 0.3rem; }
+
+/* Tab demo */
+.tab-bar { display: flex; gap: 2px; border-bottom: 1px solid #E5E9F0; margin-bottom: 1rem; }
+.tab { padding: 0.75rem 1.25rem; font-weight: 500; color: #5A6B80; font-size: 0.9rem; cursor: pointer; }
+.tab.active { color: #0A2540; border-bottom: 2px solid #C9A961; }
+
+.warn-banner { background: #FFF4DB; border-left: 3px solid #B87300; padding: 0.75rem 1rem; border-radius: 4px; font-size: 0.85rem; color: #633806; margin: 1rem 0; }
+.note { background: white; border-radius: 6px; border: 1px dashed #C9A961; font-size: 0.85rem; color: #5A6B80; padding: 0.75rem 1rem; margin-top: 1.5rem; }
+.note b { color: #0A2540; }
+</style>
+</head>
+<body>
+
+<!-- ============================== -->
+<!-- FEEDBACK 1: STEP 0.5 PROFILE INIT -->
+<!-- ============================== -->
+<div class="preview-section">
+    <div class="preview-label">📸 Preview UI v3</div>
+    <span class="feedback-tag">Feedback 1</span>
+    <h2 class="preview-h2" style="margin-top:0.5rem;">Bước 0.5 mới — Khởi tạo hồ sơ</h2>
+    <div class="meta-info">
+        <b>Vấn đề trước đây:</b> Khi chọn "Nhập tự do" hoặc preset persona, người dùng đi thẳng vào Bước 1 mà không có chỗ nhập tên/mã hồ sơ. Ở kết quả chỉ thấy "custom_input".<br>
+        <b>Giải pháp v3:</b> Thêm bước riêng để nhập tên + mã + ngày — rõ ràng quy trình, đúng với thực tế ngân hàng.
+    </div>
+
+    <div class="step-indicator"><span class="step-dot"></span>Bước 0.5 / 6 · Khởi tạo</div>
+    <h2 class="preview-h2">🪪 Khởi tạo hồ sơ</h2>
+    <p style="color:#5A6B80; margin-bottom:1.5rem;">Nhập thông tin định danh cho hồ sơ trước khi tiến hành kê khai chi tiết</p>
+
+    <div class="section-title">📝 Thông tin định danh hồ sơ</div>
+
+    <div class="form-grid">
+        <div>
+            <div class="form-field">
+                <label>Họ và tên khách hàng *</label>
+                <input type="text" value="Nguyễn Văn An" placeholder="Ví dụ: Nguyễn Văn An">
+            </div>
+            <div class="form-field" style="margin-top:1rem;">
+                <label>Mã hồ sơ vay</label>
+                <input type="text" value="HS-A-20260426">
+            </div>
+        </div>
+        <div>
+            <div class="form-field">
+                <label>Ngày nộp hồ sơ</label>
+                <input type="text" value="26/04/2026">
+            </div>
+            <div class="profile-status-card">
+                <div class="label">Trạng thái</div>
+                <div class="value">📋 Đang khởi tạo</div>
+                <div class="meta">Sau khi hoàn tất, hồ sơ sẽ tự động chuyển sang giai đoạn xét duyệt</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="profile-summary">
+        <div class="header">Tóm tắt thông tin hồ sơ</div>
+        <div class="profile-summary-grid">
+            <div>
+                <div class="col-label">Khách hàng</div>
+                <div class="col-value">Nguyễn Văn An</div>
+            </div>
+            <div>
+                <div class="col-label">Mã hồ sơ</div>
+                <div class="col-value" style="font-family:'Courier New',monospace;">HS-A-20260426</div>
+            </div>
+            <div>
+                <div class="col-label">Ngày nộp</div>
+                <div class="col-value">26/04/2026</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="note">💡 Persona preset (A/B/C) sẽ <b>auto-fill</b> tên và mã từ persona. Khi chọn "Nhập tự do", người dùng nhập thủ công và nút "Tiếp theo" bị <b>disable nếu chưa nhập tên</b>.</div>
+</div>
+
+<!-- ============================== -->
+<!-- FEEDBACK 2 + 3: DASHBOARD GỌN + RATE EXPLAIN -->
+<!-- ============================== -->
+<div class="preview-section">
+    <div class="preview-label">📸 Preview UI v3</div>
+    <span class="feedback-tag">Feedback 2</span>
+    <h2 class="preview-h2" style="margin-top:0.5rem;">Dashboard kết quả gọn — gộp tất cả thông tin chính 1 view</h2>
+    <div class="meta-info">
+        <b>Vấn đề trước đây:</b> Phải scroll/click tab mới thấy đủ thông tin. Hero card → metric row → 4 tabs trải dài.<br>
+        <b>Giải pháp v3:</b> Tổ chức 3 tầng — Dashboard hero (tầng 1) gộp gauge điểm + status + 4 info cards. Quick summary (tầng 2) 3 cột tóm tắt. Tabs (tầng 3) cho chi tiết khi cần.
+    </div>
+
+    <div class="step-indicator"><span class="step-dot"></span>Bước 5 / 6 · Kết quả</div>
+    <h2 class="preview-h2">📋 Kết quả xét duyệt</h2>
+
+    <!-- DASHBOARD HERO -->
+    <div class="dashboard-hero">
+        <div class="dashboard-grid">
+            <!-- Gauge -->
+            <div class="gauge-section">
+                <div style="font-size:0.78rem; color:#5A6B80; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.5rem;">Điểm tín dụng</div>
+                <div class="gauge-number">915<span class="gauge-suffix"> / 1000</span></div>
+                <div class="gauge-grade">HẠNG AA</div>
+                <div class="gauge-label">Very Low risk</div>
+            </div>
+            <!-- Right side -->
+            <div>
+                <div>
+                    <span class="status-badge">✓  DUYỆT ƯU TIÊN</span>
+                    <div class="dashboard-customer-info">
+                        <b>Nguyễn Văn An</b>
+                        &nbsp;·&nbsp; Mã: <code>HS-A-20260426</code>
+                        &nbsp;·&nbsp; Ngày: 26/04/2026
+                    </div>
+                </div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-item-label">Khoảng lãi suất đề xuất</div>
+                        <div class="info-item-value gold">18% – 22%/năm</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-label">Số tiền vay</div>
+                        <div class="info-item-value">30,000,000 VNĐ</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-label">Kỳ hạn</div>
+                        <div class="info-item-value">18 tháng</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-label">Sản phẩm</div>
+                        <div class="info-item-value" style="font-size:0.95rem;">Honda Vision 2025</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QUICK SUMMARY 3 cards -->
+    <div class="quick-summary">
+        <div class="summary-card">
+            <div class="summary-card-header">
+                🛡️ Hard Rules
+                <span class="right-text">6/6 · Tất cả PASS</span>
+            </div>
+            <div class="summary-card-row">
+                <span class="label">Tuổi >= 20</span>
+                <span class="check-icon pass">✓</span>
+            </div>
+            <div class="summary-card-row">
+                <span class="label">Tuổi <= 60</span>
+                <span class="check-icon pass">✓</span>
+            </div>
+            <div class="summary-card-row">
+                <span class="label">Thu nhập >= 5 triệu</span>
+                <span class="check-icon pass">✓</span>
+            </div>
+            <div class="summary-card-row">
+                <span class="label">Thời gian công tác >= 3 tháng</span>
+                <span class="check-icon pass">✓</span>
+            </div>
+            <div class="summary-card-row">
+                <span class="label">Không có nợ nhóm 3,4,5</span>
+                <span class="check-icon pass">✓</span>
+            </div>
+            <div class="summary-card-row">
+                <span class="label">DTI sau khi vay <= 60%</span>
+                <span class="check-icon pass">✓</span>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-card-header">📊 Điểm theo nhóm</div>
+            <div class="summary-card-row">
+                <span class="label">Lịch sử tín dụng</span>
+                <span class="value" style="color:#0F7A5C;">330/350 (94%)</span>
+            </div>
+            <div class="summary-card-row">
+                <span class="label">Thu nhập</span>
+                <span class="value" style="color:#0F7A5C;">280/300 (93%)</span>
+            </div>
+            <div class="summary-card-row">
+                <span class="label">Nhân thân</span>
+                <span class="value" style="color:#0F7A5C;">190/200 (95%)</span>
+            </div>
+            <div class="summary-card-row">
+                <span class="label">Tài sản</span>
+                <span class="value" style="color:#0F7A5C;">115/150 (77%)</span>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-card-header">💡 Lý do quyết định</div>
+            <div class="reason-text">
+                Khách hàng có lịch sử tín dụng tốt và thu nhập ổn định. Đủ điều kiện duyệt ưu tiên với lãi suất thấp nhất trong khung sản phẩm.
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="tab-bar">
+        <div class="tab active">💵 Phương án trả nợ</div>
+        <div class="tab">💡 Lý do lãi suất</div>
+        <div class="tab">📊 Điểm chi tiết</div>
+        <div class="tab">🛡️ Hard Rules · Chứng từ</div>
+    </div>
+
+    <h3 class="preview-h3">Tab "💵 Phương án trả nợ" — có slider dynamic <span class="feedback-tag" style="margin-left:0.5rem;">Feedback 4</span></h3>
+
+    <!-- SLIDER -->
+    <div class="slider-container">
+        <div style="font-weight:500; color:#0A2540; margin-bottom:0.5rem;">Chọn lãi suất áp dụng</div>
+        <div style="font-size:0.85rem; color:#5A6B80; margin-bottom:1rem;">
+            Hạng <b style="color:#0A2540;">AA</b> có khoảng lãi suất đề xuất từ <b>18.0%</b> đến <b>22.0%</b>/năm.
+            Kéo thanh trượt để chọn mức lãi suất cụ thể — bảng lịch trả nợ sẽ tự cập nhật.
+        </div>
+        <div class="slider-row">
+            <div>
+                <div class="slider-track">
+                    <div class="slider-fill" style="width:50%;"></div>
+                    <div class="slider-knob" style="left:calc(50% - 10px);"></div>
+                </div>
+                <div class="slider-labels">
+                    <span>18.0%</span>
+                    <span>20.0% (mặc định)</span>
+                    <span>22.0%</span>
+                </div>
+            </div>
+            <div class="slider-current">
+                <div class="label">Đang chọn</div>
+                <div class="value">20.0%/năm</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="note">💡 Khi <b>kéo slider</b>, toàn bộ bảng lịch trả nợ PA1 (niên kim) và PA2 (gốc đều), chart so sánh, tổng lãi, và file Excel download <b>đều cập nhật ngay lập tức</b>. Cho phép so sánh các kịch bản: "Nếu lãi 18% thì tổng trả bao nhiêu?", "Nếu xấu nhất 22% thì khác bao nhiêu?"</div>
+</div>
+
+<!-- ============================== -->
+<!-- FEEDBACK 3: RATE EXPLANATION -->
+<!-- ============================== -->
+<div class="preview-section">
+    <div class="preview-label">📸 Preview UI v3</div>
+    <span class="feedback-tag">Feedback 3</span>
+    <h2 class="preview-h2" style="margin-top:0.5rem;">Tab "💡 Lý do lãi suất" — giải thích khoa học</h2>
+    <div class="meta-info">
+        <b>Vấn đề trước đây:</b> Chỉ hiện "Lãi suất đề xuất: 20%/năm" mà không nói tại sao.<br>
+        <b>Giải pháp v3:</b> Tab riêng giải thích công thức + 4 cấu phần lãi suất theo phương pháp ALCO của ngân hàng + bảng tham chiếu so sánh các hạng. Phù hợp cho báo cáo học thuật.
+    </div>
+
+    <h3 class="preview-h3">Cấu thành lãi suất theo phương pháp khoa học</h3>
+
+    <div class="rate-explain-card">
+        <div class="title">🧮 Công thức tính lãi suất</div>
+        <div class="rate-formula">
+            r = LS_điều_hành + Chi_phí_vốn + Biên_rủi_ro<sub>(theo hạng)</sub> + Phí_dịch_vụ
+        </div>
+        <div style="margin-top:1rem;">
+            <div class="rate-component">
+                <span class="label">Lãi suất điều hành NHNN (Tái cấp vốn)</span>
+                <span class="value">+ 4.50%</span>
+            </div>
+            <div class="rate-component">
+                <span class="label">Chi phí huy động vốn của TCTD</span>
+                <span class="value">+ 6.00%</span>
+            </div>
+            <div class="rate-component">
+                <span class="label">Biên rủi ro hạng <b>AA</b> (very low)</span>
+                <span class="value">+ 8.00%</span>
+            </div>
+            <div class="rate-component">
+                <span class="label">Phí dịch vụ và lợi nhuận kỳ vọng</span>
+                <span class="value">+ 1.50%</span>
+            </div>
+            <div class="rate-component">
+                <span class="label">Tổng lãi suất đề xuất (mức trung bình)</span>
+                <span class="value">20.00%/năm</span>
+            </div>
+        </div>
+    </div>
+
+    <h3 class="preview-h3" style="margin-top:1.5rem;">Bảng tham chiếu lãi suất theo hạng</h3>
+
+    <table class="ref-table">
+        <thead>
+            <tr>
+                <th>Hạng</th>
+                <th>Điểm tối thiểu</th>
+                <th>Mức rủi ro</th>
+                <th>Biên rủi ro</th>
+                <th>Khoảng lãi suất</th>
+                <th>Trung bình</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="current">
+                <td>👉 AA</td>
+                <td>800</td>
+                <td>Very Low</td>
+                <td>8.0%</td>
+                <td>18.0% - 22.0%</td>
+                <td>20.0%</td>
+            </tr>
+            <tr>
+                <td>A</td>
+                <td>700</td>
+                <td>Low</td>
+                <td>10.0%</td>
+                <td>20.0% - 24.0%</td>
+                <td>22.0%</td>
+            </tr>
+            <tr>
+                <td>BBB</td>
+                <td>650</td>
+                <td>Medium</td>
+                <td>13.0%</td>
+                <td>23.0% - 27.0%</td>
+                <td>25.0%</td>
+            </tr>
+            <tr>
+                <td>BB</td>
+                <td>500</td>
+                <td>Medium High</td>
+                <td>16.0%</td>
+                <td>26.0% - 30.0%</td>
+                <td>28.0%</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="note">💡 Bảng tham chiếu cho thấy <b>logic định giá</b> rõ ràng: hạng càng cao → biên rủi ro càng thấp → lãi suất càng rẻ. Khoảng <b>overlap nhẹ</b> giữa các hạng (ví dụ AA: 18-22%, A: 20-24% có chung 20-22%) phản ánh thực tế ngân hàng có thể offer khách hạng A lãi tốt như AA để cạnh tranh.</div>
+</div>
+
+</body>
+</html>
