@@ -1177,40 +1177,46 @@ def render_hero(scorecard):
         </div>
         """
 
-    components.html(f"""
+    html = f"""
     <style>
     .hero-header {{
-        background: #0f2a44;
-        padding: 24px;
-        border-radius: 16px;
+        background: linear-gradient(135deg, #0f2a44, #1e3a5f);
+        padding: 28px 20px;
+        border-radius: 18px;
         color: white;
-        font-family: Arial, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        text-align: center;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.25);
     }}
 
     .hero-logo-wrap {{
-        margin-bottom: 10px;
+        display: flex;
+        justify-content: center;
+        margin-bottom: 16px;
     }}
 
     .hero-logo {{
-        max-width: 150px;
+        max-width: 220px;
         height: auto;
-        display: block;
+        filter: drop-shadow(0 4px 10px rgba(0,0,0,0.4));
     }}
 
     .hero-badge {{
-        font-size: 14px;
-        opacity: 0.8;
-        margin-bottom: 8px;
+        font-size: 13px;
+        opacity: 0.75;
+        margin-bottom: 6px;
+        letter-spacing: 0.5px;
     }}
 
     h1 {{
-        margin: 5px 0;
-        font-size: 28px;
-        color: white;
+        margin: 6px 0;
+        font-size: 30px;
+        font-weight: 600;
     }}
 
     p {{
         margin: 0;
+        font-size: 15px;
         color: #d1d5db;
     }}
     </style>
@@ -1221,7 +1227,9 @@ def render_hero(scorecard):
         <h1>{t('app_title')}</h1>
         <p>{scorecard['product']['name']} · {t('app_subtitle')}</p>
     </div>
-    """, height=250)
+    """
+
+    components.html(html, height=320)
 
 # ============================================================
 # SIDEBAR (with language switcher)
