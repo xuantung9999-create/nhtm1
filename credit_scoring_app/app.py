@@ -41,10 +41,27 @@ def cached_calculate_both_plans(principal: float, annual_rate: float, term_month
 BASE_DIR = Path(__file__).parent
 SCORECARD_PATH = BASE_DIR / "data" / "scorecard.json"
 PERSONAS_PATH = BASE_DIR / "data" / "personas.json"
+ASSETS_DIR = BASE_DIR / "assets"
+LOGO_FULL_PATH = ASSETS_DIR / "logo_cropped.png"
+LOGO_ICON_PATH = ASSETS_DIR / "logo_icon.png"
+
+
+@st.cache_data
+def _encode_image_b64(path: Path) -> str:
+    """Encode an image file as base64 for embedding in HTML/markdown."""
+    import base64
+    if not path.exists():
+        return ""
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode("ascii")
+
+
+LOGO_FULL_B64 = _encode_image_b64(LOGO_FULL_PATH)
+LOGO_ICON_B64 = _encode_image_b64(LOGO_ICON_PATH)
 
 st.set_page_config(
-    page_title="Credit Scoring System",
-    page_icon="🏛️",
+    page_title="Khá Bank · Credit Scoring",
+    page_icon=str(LOGO_ICON_PATH) if LOGO_ICON_PATH.exists() else "🏛️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -568,7 +585,7 @@ st.markdown("""
     .hero-header {
         background: linear-gradient(135deg, #0A2540 0%, #1B3A5C 100%);
         color: white;
-        padding: 1.75rem 2rem;
+        padding: 1.5rem 2rem 1.75rem 2rem;
         border-radius: 14px;
         margin-bottom: 1.5rem;
         box-shadow: 0 4px 18px rgba(10, 37, 64, 0.10);
@@ -582,6 +599,22 @@ st.markdown("""
         width: 220px; height: 100%;
         background: radial-gradient(circle at top right, rgba(201,169,97,0.18), transparent 70%);
         pointer-events: none;
+    }
+    .hero-logo-wrap {
+        background: rgba(255,255,255,0.97);
+        border-radius: 10px;
+        padding: 0.55rem 1.1rem;
+        display: inline-block;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.18),
+                    0 0 0 1px rgba(201,169,97,0.35);
+        position: relative;
+        z-index: 1;
+    }
+    .hero-logo {
+        height: 54px;
+        width: auto;
+        display: block;
     }
     .hero-header h1 {
         color: white !important;
@@ -1135,10 +1168,18 @@ def prev_step(): st.session_state.step -= 1
 # ============================================================
 
 def render_hero(scorecard):
+    logo_html = ""
+    if LOGO_FULL_B64:
+        logo_html = f"""
+        <div class="hero-logo-wrap">
+            <img src="data:image/png;base64,{LOGO_FULL_B64}" alt="Khá Bank" class="hero-logo"/>
+        </div>
+        """
     st.markdown(f"""
     <div class="hero-header">
+        {logo_html}
         <div class="hero-badge">{t('app_badge')}</div>
-        <h1>🏛️ {t('app_title')}</h1>
+        <h1>{t('app_title')}</h1>
         <p>{scorecard['product']['name']} · {t('app_subtitle')}</p>
     </div>
     """, unsafe_allow_html=True)
@@ -1150,13 +1191,28 @@ def render_hero(scorecard):
 
 def render_sidebar(scorecard):
     with st.sidebar:
-        st.markdown(f"""
-        <div style="text-align:center; padding:1rem 0 0.75rem 0;">
-            <div style="font-size:2rem;">🏛️</div>
-            <div style="font-weight:600; color:white; margin-top:0.3rem;">{t('sidebar_title')}</div>
-            <div style="font-size:0.8rem; color:#8593A8;">{t('sidebar_sub')}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        if LOGO_ICON_B64:
+            st.markdown(f"""
+            <div style="text-align:center; padding:1rem 0 0.75rem 0;">
+                <img src="data:image/png;base64,{LOGO_ICON_B64}" alt="Khá Bank"
+                     style="height:72px; width:auto; display:inline-block;
+                            filter: drop-shadow(0 4px 12px rgba(0,0,0,0.35));"/>
+                <div style="font-weight:700; color:white; margin-top:0.5rem;
+                            letter-spacing:0.04em; font-size:1.05rem;">KHÁ BANK</div>
+                <div style="font-size:0.72rem; color:#C9A961; margin-top:0.15rem;
+                            letter-spacing:0.18em; text-transform:uppercase;
+                            font-weight:600;">Bảnh Bao — Tin Cậy</div>
+                <div style="font-size:0.78rem; color:#8593A8; margin-top:0.5rem;">{t('sidebar_sub')}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div style="text-align:center; padding:1rem 0 0.75rem 0;">
+                <div style="font-size:2rem;">🏛️</div>
+                <div style="font-weight:600; color:white; margin-top:0.3rem;">{t('sidebar_title')}</div>
+                <div style="font-size:0.8rem; color:#8593A8;">{t('sidebar_sub')}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
         # Language switcher
         st.markdown(f"""
