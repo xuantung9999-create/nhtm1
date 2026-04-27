@@ -1166,6 +1166,38 @@ def prev_step(): st.session_state.step -= 1
 # ============================================================
 # HERO HEADER
 # ============================================================
+import streamlit.components.v1 as components
+
+def render_hero(scorecard):
+    logo_html = ""
+    if LOGO_FULL_B64:
+        logo_html = f"""
+        <div class="hero-logo-wrap">
+            <img src="data:image/png;base64,{LOGO_FULL_B64}" class="hero-logo"/>
+        </div>
+        """
+
+    components.html(f"""
+    <style>
+    .hero-header {{
+        background: #0f2a44;
+        padding: 24px;
+        border-radius: 16px;
+        color: white;
+    }}
+    .hero-badge {{
+        font-size: 14px;
+        opacity: 0.8;
+    }}
+    </style>
+
+    <div class="hero-header">
+        {logo_html}
+        <div class="hero-badge">{t('app_badge')}</div>
+        <h1>{t('app_title')}</h1>
+        <p>{scorecard['product']['name']} · {t('app_subtitle')}</p>
+    </div>
+    """, height=250)
 
 def render_hero(scorecard):
     logo_html = ""
