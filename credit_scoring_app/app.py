@@ -1229,7 +1229,7 @@ def render_hero(scorecard):
     </div>
     """
 
-    components.html(html, height=320)
+    components.html(html, height=360)
 
 # ============================================================
 # SIDEBAR (with language switcher)
