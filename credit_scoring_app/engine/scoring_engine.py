@@ -11,9 +11,11 @@ Module này cung cấp 3 class chính:
 Logic tách rời hoàn toàn khỏi cấu hình (scorecard.json) để dễ bảo trì.
 """
 
+from __future__ import annotations  # Fix: cho phép dùng float|None, list[...] trên Python 3.9
+
 import json
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Optional
 
 
 # ============================================================
@@ -41,7 +43,7 @@ class HardRulesCheckResult:
         return [c for c in self.checks if not c.passed]
 
 
-
+@dataclass
 class VariableScore:
     """Điểm của một biến cụ thể."""
     variable_key: str
@@ -88,9 +90,6 @@ class GradeResult:
     min_score_required: int
     interest_rate_min: float | None = None
     interest_rate_max: float | None = None
-    interest_rate_min: float | None = None
-    interest_rate_max: float | None = None
-    risk_premium: float | None = None
     risk_premium: float | None = None
 
 
