@@ -1196,7 +1196,7 @@ def render_hero(scorecard):
     }}
 
     .hero-logo {{
-        max-width: 220px;
+        max-width: 260px;
         height: auto;
         filter: drop-shadow(0 4px 10px rgba(0,0,0,0.4));
     }}
@@ -1229,7 +1229,7 @@ def render_hero(scorecard):
     </div>
     """
 
-    components.html(html, height=360)
+    components.html(html, height=320)
 
 # ============================================================
 # SIDEBAR (with language switcher)
