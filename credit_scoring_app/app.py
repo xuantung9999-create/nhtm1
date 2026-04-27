@@ -503,6 +503,7 @@ def init_state():
     if "profile_meta" not in st.session_state:
         st.session_state.profile_meta = {
             "full_name": "",
+            "cccd_number": "",
             "profile_id": "",
             "submission_date": datetime.now().strftime("%d/%m/%Y"),
         }
@@ -537,8 +538,11 @@ def load_persona_to_state(persona):
     st.session_state.selected_persona = persona["persona_id"]
     # v3: tự fill tên + mã hồ sơ từ persona
     persona_letter = persona["persona_id"][0]
+    # Sample CCCD đã censor cho persona preset (chỉ minh họa, đã che)
+    sample_cccd = {"A": "001094XXXXXX", "B": "038099XXXXXX", "C": "042081XXXXXX"}
     st.session_state.profile_meta = {
         "full_name": persona["full_name_censored"],
+        "cccd_number": sample_cccd.get(persona_letter, ""),
         "profile_id": f"HS-{persona_letter}-{datetime.now().strftime('%Y%m%d')}",
         "submission_date": datetime.now().strftime("%d/%m/%Y"),
     }
@@ -766,6 +770,13 @@ def render_step_init_profile():
             placeholder="Ví dụ: Nguyễn Văn An",
             help="Họ tên đầy đủ theo CMND/CCCD. Trên báo cáo sẽ hiển thị che mã hoá.",
         )
+        pm["cccd_number"] = st.text_input(
+            "Số CCCD / CMND *",
+            value=pm.get("cccd_number", ""),
+            placeholder="Ví dụ: 001094XXXXXX",
+            max_chars=12,
+            help="Số CCCD 12 chữ số hoặc CMND 9 chữ số. Nên che 6 số cuối bằng X để bảo mật.",
+        )
         pm["profile_id"] = st.text_input(
             "Mã hồ sơ vay",
             value=pm.get("profile_id", ""),
@@ -778,26 +789,38 @@ def render_step_init_profile():
         )
         st.markdown(f"""
         <div style="background:#FDFAF2; padding:0.85rem 1rem; border-radius:8px;
-                    border-left:3px solid var(--gold); margin-top:1.7rem;">
+                    border-left:3px solid var(--gold); margin-top:1rem;">
             <div style="font-size:0.78rem; color:var(--text-secondary); font-weight:500;">Trạng thái</div>
             <div style="font-weight:600; color:var(--navy); margin-top:0.2rem;">📋 Đang khởi tạo</div>
             <div style="font-size:0.78rem; color:var(--text-secondary); margin-top:0.4rem;">
                 Sau khi hoàn tất, hồ sơ sẽ tự động chuyển sang giai đoạn xét duyệt
             </div>
         </div>
+        <div style="background:#E8EEF5; padding:0.75rem 1rem; border-radius:8px;
+                    border-left:3px solid var(--navy); margin-top:0.6rem;">
+            <div style="font-size:0.8rem; color:var(--navy); line-height:1.5;">
+                <b>🔒 Bảo mật:</b> Số CCCD/CMND chỉ dùng để định danh hồ sơ.
+                Khuyến nghị che 6 ký tự cuối (ví dụ: 001094XXXXXX).
+            </div>
+        </div>
         """, unsafe_allow_html=True)
 
     # v3: Hiển thị summary card với data đã nhập
     if pm.get("full_name"):
+        cccd_display = pm.get("cccd_number") or "—"
         st.markdown(f"""
         <div style="background:white; border:1px solid #E5E9F0; border-radius:10px;
                     padding:1.25rem 1.5rem; margin-top:1.5rem;">
             <div style="font-size:0.78rem; color:var(--text-secondary); text-transform:uppercase;
                         letter-spacing:0.05em; margin-bottom:0.5rem;">Tóm tắt thông tin hồ sơ</div>
-            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1rem;">
+            <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:1rem;">
                 <div>
                     <div style="font-size:0.78rem; color:var(--text-secondary);">Khách hàng</div>
                     <div style="font-weight:600; color:var(--navy); margin-top:0.2rem;">{pm['full_name']}</div>
+                </div>
+                <div>
+                    <div style="font-size:0.78rem; color:var(--text-secondary);">CCCD/CMND</div>
+                    <div style="font-weight:600; color:var(--navy); margin-top:0.2rem; font-family:'Courier New',monospace;">{cccd_display}</div>
                 </div>
                 <div>
                     <div style="font-size:0.78rem; color:var(--text-secondary);">Mã hồ sơ</div>
@@ -811,8 +834,14 @@ def render_step_init_profile():
         </div>
         """, unsafe_allow_html=True)
 
+    # Validation - cần cả tên và CCCD
+    missing = []
     if not pm.get("full_name"):
-        st.warning("⚠️ Vui lòng nhập họ và tên trước khi tiếp tục")
+        missing.append("họ và tên")
+    if not pm.get("cccd_number"):
+        missing.append("số CCCD/CMND")
+    if missing:
+        st.warning(f"⚠️ Vui lòng nhập {' và '.join(missing)} trước khi tiếp tục")
 
     st.markdown("<br>", unsafe_allow_html=True)
     col_l, _, col_r = st.columns([1, 2, 1])
@@ -821,8 +850,8 @@ def render_step_init_profile():
             prev_step()
             st.rerun()
     with col_r:
-        # Disable next button nếu chưa có tên
-        if pm.get("full_name"):
+        # Disable next button nếu thiếu thông tin bắt buộc
+        if pm.get("full_name") and pm.get("cccd_number"):
             if st.button("Tiếp theo →", type="primary", use_container_width=True):
                 next_step()
                 st.rerun()
@@ -1208,8 +1237,13 @@ def render_dashboard_hero(decision, scorecard):
                      if decision.scoring_result else "—")
     grade_display = (decision.grade_result.grade if decision.grade_result else "N/A")
 
-    if decision.grade_result and decision.grade_result.interest_rate_min:
-        rate_range = f"{decision.grade_result.interest_rate_min*100:.0f}% – {decision.grade_result.interest_rate_max*100:.0f}%"
+    # Fix bulletproof: dùng getattr để tương thích kể cả engine cũ
+    rate_min = getattr(decision.grade_result, "interest_rate_min", None) if decision.grade_result else None
+    rate_max = getattr(decision.grade_result, "interest_rate_max", None) if decision.grade_result else None
+    if rate_min and rate_max:
+        rate_range = f"{rate_min*100:.0f}% – {rate_max*100:.0f}%"
+    elif decision.grade_result and decision.grade_result.interest_rate_annual:
+        rate_range = f"{decision.grade_result.interest_rate_annual*100:.0f}%"
     else:
         rate_range = "—"
 
@@ -1232,7 +1266,8 @@ def render_dashboard_hero(decision, scorecard):
                         <div class="result-status-badge {m['badge_cls']}">{m['icon']}  {m['label']}</div>
                         <div style="margin-top:0.6rem; font-size:0.85rem; color:var(--text-secondary);">
                             <b style="color:var(--navy);">{pm.get('full_name', 'Khách hàng')}</b>
-                            &nbsp;·&nbsp; Mã: <span style="font-family:'Courier New', monospace;">{pm.get('profile_id', '—')}</span>
+                            &nbsp;·&nbsp; CCCD: <span style="font-family:'Courier New', monospace;">{pm.get('cccd_number', '—')}</span>
+                            &nbsp;·&nbsp; Mã HS: <span style="font-family:'Courier New', monospace;">{pm.get('profile_id', '—')}</span>
                             &nbsp;·&nbsp; Ngày: {pm.get('submission_date', '—')}
                         </div>
                     </div>
@@ -1366,15 +1401,23 @@ def render_rejection_detail(decision):
 # ============================================================
 
 def render_repayment_with_slider(loan_amount, grade_result, term_months, scorecard):
-    if not grade_result or grade_result.interest_rate_min is None:
+    if not grade_result or grade_result.interest_rate_annual is None:
         st.info("ℹ️ Hồ sơ bị từ chối, không tính phương án trả nợ.")
         return
+
+    # Fallback: nếu engine cũ chưa có interest_rate_min/max, dùng ±2% quanh interest_rate_annual
+    rate_min = getattr(grade_result, "interest_rate_min", None)
+    rate_max = getattr(grade_result, "interest_rate_max", None)
+    if rate_min is None or rate_max is None:
+        base_rate = grade_result.interest_rate_annual
+        rate_min = max(0.0, base_rate - 0.02)
+        rate_max = base_rate + 0.02
 
     # === v3: SLIDER ===
     st.markdown("#### Chọn lãi suất áp dụng")
     st.caption(
         f"Hạng **{grade_result.grade}** có khoảng lãi suất đề xuất từ "
-        f"**{grade_result.interest_rate_min*100:.1f}%** đến **{grade_result.interest_rate_max*100:.1f}%**/năm. "
+        f"**{rate_min*100:.1f}%** đến **{rate_max*100:.1f}%**/năm. "
         "Kéo thanh trượt để chọn mức lãi suất cụ thể — bảng lịch trả nợ sẽ tự cập nhật."
     )
 
@@ -1383,16 +1426,16 @@ def render_repayment_with_slider(loan_amount, grade_result, term_months, scoreca
         st.session_state.selected_rate = grade_result.interest_rate_annual
 
     # Đảm bảo selected_rate trong khoảng hợp lệ (phòng đổi hạng)
-    if (st.session_state.selected_rate < grade_result.interest_rate_min or
-        st.session_state.selected_rate > grade_result.interest_rate_max):
+    if (st.session_state.selected_rate < rate_min or
+        st.session_state.selected_rate > rate_max):
         st.session_state.selected_rate = grade_result.interest_rate_annual
 
     col_slider, col_info = st.columns([3, 1])
     with col_slider:
         selected_rate = st.slider(
             "Lãi suất áp dụng (%/năm)",
-            min_value=float(grade_result.interest_rate_min * 100),
-            max_value=float(grade_result.interest_rate_max * 100),
+            min_value=float(rate_min * 100),
+            max_value=float(rate_max * 100),
             value=float(st.session_state.selected_rate * 100),
             step=0.1,
             format="%.1f%%",
@@ -1534,7 +1577,23 @@ def render_rate_explanation(grade_result, scorecard):
         st.info("ℹ️ Hồ sơ bị từ chối, không có lãi suất đề xuất.")
         return
 
-    components = scorecard["scoring_system"]["interest_rate_components"]
+    # Fallback: nếu engine cũ chưa có interest_rate_components hoặc risk_premium
+    components = scorecard["scoring_system"].get("interest_rate_components")
+    if not components:
+        st.warning(
+            "⚠️ File `scorecard.json` trên server chưa được cập nhật phiên bản v3 "
+            "(thiếu `interest_rate_components`). Vui lòng push file mới lên repo và đợi redeploy."
+        )
+        return
+
+    risk_premium = getattr(grade_result, "risk_premium", None)
+    if risk_premium is None:
+        st.warning(
+            "⚠️ File `engine/scoring_engine.py` trên server chưa được cập nhật phiên bản v3 "
+            "(thiếu `risk_premium`). Vui lòng push file mới lên repo và đợi redeploy."
+        )
+        return
+
     selected_rate = st.session_state.selected_rate or grade_result.interest_rate_annual
 
     st.markdown("#### Cấu thành lãi suất theo phương pháp khoa học")
@@ -1565,7 +1624,7 @@ def render_rate_explanation(grade_result, scorecard):
             </div>
             <div class="rate-component">
                 <span class="label">Biên rủi ro hạng <b>{grade_result.grade}</b> ({grade_result.risk_level.replace('_', ' ')})</span>
-                <span class="value">+ {grade_result.risk_premium*100:.2f}%</span>
+                <span class="value">+ {risk_premium*100:.2f}%</span>
             </div>
             <div class="rate-component">
                 <span class="label">{components['service_fee_label']}</span>
@@ -1573,7 +1632,7 @@ def render_rate_explanation(grade_result, scorecard):
             </div>
             <div class="rate-component">
                 <span class="label">Tổng lãi suất đề xuất (mức trung bình)</span>
-                <span class="value">{(components['policy_rate'] + components['cost_of_fund'] + grade_result.risk_premium + components['service_fee'])*100:.2f}%/năm</span>
+                <span class="value">{(components['policy_rate'] + components['cost_of_fund'] + risk_premium + components['service_fee'])*100:.2f}%/năm</span>
             </div>
         </div>
     </div>
@@ -1593,7 +1652,7 @@ def render_rate_explanation(grade_result, scorecard):
             <p><b style="color:var(--navy);">2. Chi phí huy động vốn ({components['cost_of_fund']*100:.1f}%):</b>
             Chi phí thực tế ngân hàng phải trả cho người gửi tiết kiệm để có vốn cho vay lại.
             Phụ thuộc vào kỳ hạn huy động và cạnh tranh thị trường.</p>
-            <p><b style="color:var(--navy);">3. Biên rủi ro ({grade_result.risk_premium*100:.1f}% cho hạng {grade_result.grade}):</b>
+            <p><b style="color:var(--navy);">3. Biên rủi ro ({risk_premium*100:.1f}% cho hạng {grade_result.grade}):</b>
             Phần bù rủi ro tương ứng với khả năng vỡ nợ của khách hàng.
             Hạng càng cao biên càng thấp. Đây là cấu phần <i>quan trọng nhất</i> của scorecard —
             nó biến điểm tín dụng thành con số thực tế khách hàng phải trả.</p>
@@ -1612,12 +1671,15 @@ def render_rate_explanation(grade_result, scorecard):
         if t["interest_rate_annual"] is None:
             continue
         is_current = t["grade"] == grade_result.grade
+        rmin = t.get("interest_rate_min", t["interest_rate_annual"] - 0.02)
+        rmax = t.get("interest_rate_max", t["interest_rate_annual"] + 0.02)
+        rprem = t.get("risk_premium", 0)
         ref_data.append({
             "Hạng": ("👉 " if is_current else "") + t["grade"],
             "Điểm tối thiểu": t["min_score"],
             "Mức rủi ro": t["risk_level"].replace("_", " ").title(),
-            "Biên rủi ro": f"{t['risk_premium']*100:.1f}%",
-            "Khoảng lãi suất": f"{t['interest_rate_min']*100:.1f}% - {t['interest_rate_max']*100:.1f}%",
+            "Biên rủi ro": f"{rprem*100:.1f}%",
+            "Khoảng lãi suất": f"{rmin*100:.1f}% - {rmax*100:.1f}%",
             "Trung bình": f"{t['interest_rate_annual']*100:.1f}%",
         })
     df_ref = pd.DataFrame(ref_data)
