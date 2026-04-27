@@ -1209,13 +1209,12 @@ def render_step5_result(scorecard):
 # ============================================================
 
 def render_consolidated_dashboard(decision, scorecard):
-    """Dashboard kết quả tích hợp: tất cả thông tin trong 1 view, không lặp.
+    """Dashboard compact - tất cả thông tin trong 1 màn hình, không cần scroll.
     
-    Layout:
-    - Hàng 1 (left+right): Gauge điểm | Thông tin hồ sơ + 4 chỉ số khoản vay
-    - Hàng 2: Thanh điểm theo nhóm (chỉ khi pass)
-    - Hàng 3: Hard rules + lý do quyết định (2 cột)
-    - Hàng 4 (chỉ khi fail): Chi tiết lý do từ chối
+    Layout 2 cột:
+    - Trái: Hero (gauge nhỏ + status + thông tin hồ sơ + 4 chỉ số khoản vay)
+            + Score bars compact + expandable detail
+    - Phải: Hard rules + lý do quyết định
     """
     pm = st.session_state.profile_meta
 
@@ -1239,18 +1238,13 @@ def render_consolidated_dashboard(decision, scorecard):
                      if decision.scoring_result else "—")
     grade_display = (decision.grade_result.grade if decision.grade_result else "—")
 
-    # Map mức rủi ro sang tiếng Việt
     risk_vi_map = {
-        "very_low": "Rất thấp",
-        "low": "Thấp",
-        "medium": "Trung bình",
-        "medium_high": "Trung bình cao",
-        "high": "Cao",
+        "very_low": "Rất thấp", "low": "Thấp", "medium": "Trung bình",
+        "medium_high": "Trung bình cao", "high": "Cao",
     }
     risk_display = (risk_vi_map.get(decision.grade_result.risk_level, "—")
                     if decision.grade_result else "—")
 
-    # Khoảng lãi suất
     rate_min = getattr(decision.grade_result, "interest_rate_min", None) if decision.grade_result else None
     rate_max = getattr(decision.grade_result, "interest_rate_max", None) if decision.grade_result else None
     if rate_min and rate_max:
@@ -1262,45 +1256,61 @@ def render_consolidated_dashboard(decision, scorecard):
 
     loan_req = st.session_state.applicant.get("loan_request", {})
 
-    # === HÀNG 1: Hero card (gauge + customer info + loan info) ===
+    # === HERO COMPACT - 1 hàng ngang gọn ===
+    border_color_map = {
+        "approved": "#0F7A5C",
+        "review": "#B87300",
+        "rejected": "#B33A3A",
+    }
+    border_color = border_color_map.get(m["cls"], "#B33A3A")
+
     st.markdown(f"""
-    <div class="dashboard-hero {m['cls']}">
-        <div class="dashboard-grid">
-            <div class="gauge-section">
-                <div style="font-size:0.78rem; color:var(--text-secondary); text-transform:uppercase;
-                            letter-spacing:0.08em; margin-bottom:0.5rem;">Điểm tín dụng</div>
-                <div class="gauge-number">{score_display}<span class="gauge-suffix"> / 1000</span></div>
-                <div class="gauge-grade">HẠNG {grade_display}</div>
-                <div class="gauge-label">Mức rủi ro: {risk_display}</div>
+    <div style="background:linear-gradient(135deg, #FFFFFF 0%, #F5F7FA 100%);
+                border:1px solid #E5E9F0; border-top:3px solid {border_color};
+                border-radius:10px; padding:1rem 1.25rem; margin-bottom:0.75rem;
+                box-shadow:0 1px 4px rgba(10,37,64,0.04);">
+        <div style="display:grid; grid-template-columns:auto 1fr; gap:1.5rem; align-items:center;">
+            <div style="text-align:center; padding-right:1.25rem; border-right:1px solid #E5E9F0;">
+                <div style="font-size:2.4rem; font-weight:700; color:#0A2540; line-height:1; letter-spacing:-0.02em;">
+                    {score_display}<span style="font-size:1rem; color:#5A6B80; font-weight:400;"> / 1000</span>
+                </div>
+                <div style="display:inline-block; background:#0A2540; color:#C9A961;
+                            padding:0.2rem 0.7rem; border-radius:5px; font-weight:700;
+                            font-size:0.85rem; letter-spacing:0.05em; margin-top:0.4rem;">
+                    HẠNG {grade_display}
+                </div>
+                <div style="font-size:0.7rem; color:#5A6B80; margin-top:0.3rem;">
+                    Rủi ro: {risk_display}
+                </div>
             </div>
             <div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.85rem;">
-                    <div>
-                        <div class="result-status-badge {m['badge_cls']}">{m['icon']}  {m['label']}</div>
-                        <div style="margin-top:0.5rem; font-size:0.85rem; color:var(--text-secondary);">
-                            <b style="color:var(--navy);">{pm.get('full_name', 'Khách hàng')}</b>
-                            &nbsp;·&nbsp; CCCD: {pm.get('cccd_number', '—')}
-                            &nbsp;·&nbsp; Mã hồ sơ: {pm.get('profile_id', '—')}
-                            &nbsp;·&nbsp; {pm.get('submission_date', '—')}
-                        </div>
-                    </div>
+                <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.5rem; flex-wrap:wrap;">
+                    <span class="result-status-badge {m['badge_cls']}" style="font-size:0.78rem; padding:0.25rem 0.7rem;">
+                        {m['icon']}  {m['label']}
+                    </span>
+                    <span style="font-size:0.8rem; color:#5A6B80;">
+                        <b style="color:#0A2540;">{pm.get('full_name', '—')}</b>
+                        &nbsp;·&nbsp; CCCD {pm.get('cccd_number', '—')}
+                        &nbsp;·&nbsp; {pm.get('profile_id', '—')}
+                        &nbsp;·&nbsp; {pm.get('submission_date', '—')}
+                    </span>
                 </div>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <div class="info-item-label">Khoảng lãi suất đề xuất</div>
-                        <div class="info-item-value gold">{rate_range}</div>
+                <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:0.5rem;">
+                    <div style="background:white; border:1px solid #E5E9F0; border-radius:6px; padding:0.45rem 0.7rem;">
+                        <div style="font-size:0.65rem; color:#5A6B80; text-transform:uppercase; letter-spacing:0.04em; font-weight:500;">Lãi suất đề xuất</div>
+                        <div style="font-size:0.95rem; font-weight:600; color:#C9A961; margin-top:0.1rem;">{rate_range}</div>
                     </div>
-                    <div class="info-item">
-                        <div class="info-item-label">Số tiền vay</div>
-                        <div class="info-item-value">{loan_req.get('loan_amount_vnd', 0):,} VNĐ</div>
+                    <div style="background:white; border:1px solid #E5E9F0; border-radius:6px; padding:0.45rem 0.7rem;">
+                        <div style="font-size:0.65rem; color:#5A6B80; text-transform:uppercase; letter-spacing:0.04em; font-weight:500;">Số tiền vay</div>
+                        <div style="font-size:0.95rem; font-weight:600; color:#0A2540; margin-top:0.1rem;">{loan_req.get('loan_amount_vnd', 0):,} VNĐ</div>
                     </div>
-                    <div class="info-item">
-                        <div class="info-item-label">Kỳ hạn</div>
-                        <div class="info-item-value">{loan_req.get('term_months', 0)} tháng</div>
+                    <div style="background:white; border:1px solid #E5E9F0; border-radius:6px; padding:0.45rem 0.7rem;">
+                        <div style="font-size:0.65rem; color:#5A6B80; text-transform:uppercase; letter-spacing:0.04em; font-weight:500;">Kỳ hạn</div>
+                        <div style="font-size:0.95rem; font-weight:600; color:#0A2540; margin-top:0.1rem;">{loan_req.get('term_months', 0)} tháng</div>
                     </div>
-                    <div class="info-item">
-                        <div class="info-item-label">Sản phẩm vay</div>
-                        <div class="info-item-value" style="font-size:0.95rem;">{loan_req.get('vehicle_name', '—')}</div>
+                    <div style="background:white; border:1px solid #E5E9F0; border-radius:6px; padding:0.45rem 0.7rem;">
+                        <div style="font-size:0.65rem; color:#5A6B80; text-transform:uppercase; letter-spacing:0.04em; font-weight:500;">Sản phẩm vay</div>
+                        <div style="font-size:0.85rem; font-weight:600; color:#0A2540; margin-top:0.1rem;">{loan_req.get('vehicle_name', '—')}</div>
                     </div>
                 </div>
             </div>
@@ -1308,30 +1318,49 @@ def render_consolidated_dashboard(decision, scorecard):
     </div>
     """, unsafe_allow_html=True)
 
-    # === HÀNG 2: Thanh điểm theo nhóm (chỉ khi có chấm điểm) ===
-    if decision.scoring_result:
-        st.markdown("<br>", unsafe_allow_html=True)
-        _render_score_bars(decision.scoring_result)
-
-    # === HÀNG 3: Hard rules (trái) + Lý do quyết định (phải) ===
-    st.markdown("<br>", unsafe_allow_html=True)
-    col_left, col_right = st.columns([3, 2])
+    # === 2 CỘT CHÍNH: Score bars (trái) | Hard rules + Lý do (phải) ===
+    col_left, col_right = st.columns([5, 4])
 
     with col_left:
-        _render_hard_rules_panel(decision)
+        if decision.scoring_result:
+            _render_score_bars(decision.scoring_result)
+        else:
+            st.markdown("""
+            <div style="background:white; border:1px solid #E5E9F0; border-radius:8px;
+                        padding:1rem; text-align:center; color:#5A6B80; font-size:0.85rem;">
+                Không chấm điểm do hồ sơ vi phạm điều kiện loại trực tiếp
+            </div>
+            """, unsafe_allow_html=True)
 
     with col_right:
+        _render_hard_rules_panel(decision)
+        st.markdown('<div style="height:0.5rem;"></div>', unsafe_allow_html=True)
         _render_decision_reason_panel(decision)
 
 
 def _render_score_bars(scoring_result):
-    """Thanh điểm ngang theo nhóm + tổng kết."""
-    st.markdown(
-        '<div style="font-weight:600; color:#0A2540; font-size:1rem; margin-bottom:0.75rem;">'
-        '📊 Phân tích điểm theo nhóm chứng từ</div>',
-        unsafe_allow_html=True,
-    )
+    """Thanh điểm compact + expandable detail."""
+    # Header + tổng điểm gộp 1 hàng
+    total_pct = scoring_result.ratio * 100
+    st.markdown(f"""
+    <div style="background:white; border:1px solid #E5E9F0; border-radius:8px;
+                padding:0.75rem 1rem; margin-bottom:0.4rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-weight:600; color:#0A2540; font-size:0.95rem;">📊 Phân tích điểm</div>
+            <div>
+                <span style="color:#0A2540; font-weight:700; font-size:1rem;">{scoring_result.total_points}</span>
+                <span style="color:#5A6B80; font-size:0.85rem;"> / {scoring_result.max_total_points}</span>
+                <span style="color:#C9A961; font-weight:700; font-size:1rem; margin-left:0.5rem;">{total_pct:.1f}%</span>
+            </div>
+        </div>
+        <div style="background:#F0F2F5; height:6px; border-radius:3px; margin-top:0.5rem; overflow:hidden;">
+            <div style="background:linear-gradient(90deg, #C9A961, #E0C988);
+                        height:100%; width:{total_pct}%; border-radius:3px;"></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
+    # 4 thanh nhóm compact - chiều cao thấp, padding nhỏ
     for g in scoring_result.groups:
         pct = g.ratio * 100
         if pct >= 80:
@@ -1344,55 +1373,65 @@ def _render_score_bars(scoring_result):
             color, label = "#B33A3A", "Cần cải thiện"
 
         st.markdown(f"""
-        <div style="background:white; border:1px solid #E5E9F0; border-radius:8px;
-                    padding:0.7rem 1rem; margin-bottom:0.5rem;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-                <div>
-                    <span style="font-weight:600; color:#0A2540; font-size:0.9rem;">{g.group_name}</span>
-                    <span style="color:#5A6B80; font-size:0.75rem; margin-left:0.4rem;">·  Trọng số {g.weight*100:.0f}%</span>
+        <div style="background:white; border:1px solid #E5E9F0; border-radius:6px;
+                    padding:0.45rem 0.75rem; margin-bottom:0.3rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
+                <div style="font-size:0.82rem;">
+                    <span style="font-weight:600; color:#0A2540;">{g.group_name}</span>
+                    <span style="color:#5A6B80; font-size:0.7rem; margin-left:0.3rem;">{g.weight*100:.0f}%</span>
                 </div>
-                <div style="display:flex; align-items:center; gap:0.6rem;">
-                    <span style="background:{color}; color:white; font-size:0.68rem;
-                                 padding:0.12rem 0.45rem; border-radius:4px; font-weight:500;">{label}</span>
-                    <span style="font-weight:600; color:#0A2540; font-size:0.9rem;">{g.points}<span style="color:#5A6B80; font-weight:400;"> / {g.max_points}</span></span>
-                    <span style="font-weight:700; color:{color}; font-size:1rem; min-width:50px; text-align:right;">{pct:.0f}%</span>
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <span style="background:{color}; color:white; font-size:0.62rem;
+                                 padding:0.1rem 0.35rem; border-radius:3px; font-weight:500;">{label}</span>
+                    <span style="font-size:0.78rem; color:#0A2540; font-weight:500;">{g.points}/{g.max_points}</span>
+                    <span style="font-weight:700; color:{color}; font-size:0.85rem; min-width:38px; text-align:right;">{pct:.0f}%</span>
                 </div>
             </div>
-            <div style="background:#F0F2F5; height:10px; border-radius:5px; overflow:hidden;">
-                <div style="background:linear-gradient(90deg, {color}, {color}DD);
-                            height:100%; width:{pct}%; border-radius:5px;"></div>
+            <div style="background:#F0F2F5; height:6px; border-radius:3px; overflow:hidden;">
+                <div style="background:{color}; height:100%; width:{pct}%; border-radius:3px;"></div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-    # Tổng kết
-    total_pct = scoring_result.ratio * 100
-    st.markdown(f"""
-    <div style="background:linear-gradient(135deg, #0A2540 0%, #1B3A5C 100%);
-                border-radius:8px; padding:1rem 1.25rem; margin-top:0.5rem;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div>
-                <span style="color:#D4DCE8; font-size:0.78rem; text-transform:uppercase;
-                             letter-spacing:0.05em;">Tổng điểm đạt</span>
-                <span style="color:white; font-weight:700; font-size:1.4rem; margin-left:0.6rem;">
-                    {scoring_result.total_points}<span style="color:#8593A8; font-weight:400; font-size:1rem;"> / {scoring_result.max_total_points}</span>
-                </span>
+    # Expandable: chi tiết từng biến
+    with st.expander("🔍  Xem chi tiết điểm từng biến", expanded=False):
+        for group in scoring_result.groups:
+            st.markdown(f"""
+            <div style="font-weight:600; color:#0A2540; font-size:0.85rem;
+                        padding:0.4rem 0.6rem; background:#F5F7FA; border-radius:5px;
+                        margin:0.5rem 0 0.4rem 0;">
+                {group.group_name}  ·  {group.points}/{group.max_points}  ·  {group.ratio*100:.0f}%
             </div>
-            <div>
-                <span style="color:#C9A961; font-weight:700; font-size:1.4rem;">{total_pct:.1f}%</span>
-            </div>
-        </div>
-        <div style="background:rgba(255,255,255,0.15); height:8px; border-radius:4px;
-                    margin-top:0.6rem; overflow:hidden;">
-            <div style="background:linear-gradient(90deg, #C9A961, #E0C988);
-                        height:100%; width:{total_pct}%; border-radius:4px;"></div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
+
+            for v in group.variables:
+                var_pct = (v.points / v.max_points * 100) if v.max_points > 0 else 0
+                if var_pct >= 80:
+                    var_color = "#0F7A5C"
+                elif var_pct >= 50:
+                    var_color = "#B87300"
+                else:
+                    var_color = "#B33A3A"
+
+                actual_str = str(v.actual_value)
+                if len(actual_str) > 28:
+                    actual_str = actual_str[:25] + "..."
+                actual_str = actual_str.replace("<", "&lt;").replace(">", "&gt;")
+
+                st.markdown(f"""
+                <div style="display:grid; grid-template-columns:1.5fr 1.5fr auto auto;
+                            gap:0.6rem; align-items:center; padding:0.3rem 0.6rem;
+                            font-size:0.78rem; border-bottom:1px solid #F0F2F5;">
+                    <span style="color:#0A2540;">{v.variable_name}</span>
+                    <span style="color:#5A6B80; font-size:0.75rem;">{actual_str}</span>
+                    <span style="color:#0A2540; font-weight:500; min-width:50px; text-align:right;">{v.points}/{v.max_points}</span>
+                    <span style="color:{var_color}; font-weight:700; min-width:38px; text-align:right;">{var_pct:.0f}%</span>
+                </div>
+                """, unsafe_allow_html=True)
 
 
 def _render_hard_rules_panel(decision):
-    """Panel hard rules: tổng quan + danh sách check, gộp pass/fail vào 1 chỗ."""
+    """Panel hard rules compact."""
     hard_passed = sum(1 for c in decision.hard_rules_result.checks if c.passed)
     hard_total = len(decision.hard_rules_result.checks)
 
@@ -1403,23 +1442,22 @@ def _render_hard_rules_panel(decision):
     else:
         header_color = "#B33A3A"
         n_fail = hard_total - hard_passed
-        header_text = f"{n_fail} điều kiện không đạt — Hồ sơ bị từ chối"
+        header_text = f"{n_fail} điều kiện không đạt"
         header_bg = "#FEF5F5"
 
-    # Header card
+    # Header card compact
     st.markdown(f"""
     <div style="background:{header_bg}; border:1px solid {header_color}33;
-                border-left:3px solid {header_color}; border-radius:8px;
-                padding:0.85rem 1rem; margin-bottom:0.6rem;">
+                border-left:3px solid {header_color}; border-radius:6px;
+                padding:0.55rem 0.85rem; margin-bottom:0.4rem;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-weight:600; color:#0A2540; font-size:1rem;">🛡️ Điều kiện loại trực tiếp</div>
+            <div style="font-weight:600; color:#0A2540; font-size:0.9rem;">🛡️ Điều kiện loại trực tiếp</div>
             <div style="color:{header_color}; font-weight:600; font-size:0.85rem;">{hard_passed}/{hard_total}</div>
         </div>
-        <div style="color:{header_color}; font-size:0.82rem; margin-top:0.2rem;">{header_text}</div>
+        <div style="color:{header_color}; font-size:0.75rem; margin-top:0.1rem;">{header_text}</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # Map description sang tiếng Việt ngắn gọn (escape HTML, không dùng < >)
     desc_vi_map = {
         "age_min": "Tuổi từ 20 trở lên",
         "age_max": "Tuổi không quá 60",
@@ -1429,37 +1467,35 @@ def _render_hard_rules_panel(decision):
         "dti_max": "Tỷ lệ DTI sau vay không vượt 60%",
     }
 
-    # Danh sách check - sắp xếp fail trước nếu có
+    # Sort fail trước
     sorted_checks = sorted(decision.hard_rules_result.checks, key=lambda c: c.passed)
 
     for check in sorted_checks:
         short_desc = desc_vi_map.get(check.rule_id, check.description)
-        # Escape ký tự < > nếu fallback dùng description gốc
         short_desc = short_desc.replace("<", "≤").replace(">", "≥")
 
         if check.passed:
-            icon, color, bg = "✓", "#0F7A5C", "white"
+            icon, color = "✓", "#0F7A5C"
             row_html = f"""
-            <div style="display:flex; align-items:center; gap:0.75rem; padding:0.5rem 0.85rem;
-                        background:{bg}; border:1px solid #E5E9F0; border-radius:6px; margin-bottom:0.35rem;">
-                <span style="color:{color}; font-weight:700; font-size:1rem;">{icon}</span>
-                <span style="color:#0A2540; font-size:0.85rem; flex-grow:1;">{short_desc}</span>
-                <span style="color:{color}; font-size:0.75rem; font-weight:500;">Đạt</span>
+            <div style="display:flex; align-items:center; gap:0.6rem; padding:0.32rem 0.7rem;
+                        background:white; border:1px solid #E5E9F0; border-radius:5px;
+                        margin-bottom:0.22rem; font-size:0.78rem;">
+                <span style="color:{color}; font-weight:700;">{icon}</span>
+                <span style="color:#0A2540; flex-grow:1;">{short_desc}</span>
             </div>
             """
         else:
-            icon, color, bg = "✗", "#B33A3A", "#FEF5F5"
+            icon, color = "✗", "#B33A3A"
             actual_human = _humanize_value(check.rule_id, check.actual_value)
             threshold_human = _humanize_threshold(check.rule_id, check.threshold)
             row_html = f"""
-            <div style="background:{bg}; border:1px solid {color}33; border-left:3px solid {color};
-                        border-radius:6px; padding:0.6rem 0.85rem; margin-bottom:0.35rem;">
-                <div style="display:flex; align-items:center; gap:0.75rem;">
-                    <span style="color:{color}; font-weight:700; font-size:1rem;">{icon}</span>
-                    <span style="color:{color}; font-size:0.85rem; font-weight:500; flex-grow:1;">{short_desc}</span>
-                    <span style="color:{color}; font-size:0.75rem; font-weight:600;">Không đạt</span>
+            <div style="background:#FEF5F5; border:1px solid {color}33; border-left:3px solid {color};
+                        border-radius:5px; padding:0.4rem 0.7rem; margin-bottom:0.22rem;">
+                <div style="display:flex; align-items:center; gap:0.6rem; font-size:0.78rem;">
+                    <span style="color:{color}; font-weight:700;">{icon}</span>
+                    <span style="color:{color}; font-weight:500; flex-grow:1;">{short_desc}</span>
                 </div>
-                <div style="font-size:0.78rem; color:#5A6B80; margin-top:0.3rem; padding-left:1.7rem;">
+                <div style="font-size:0.7rem; color:#5A6B80; margin-top:0.2rem; padding-left:1.3rem;">
                     Hiện tại: <b style="color:#0A2540;">{actual_human}</b>
                     &nbsp;·&nbsp; Yêu cầu: <b style="color:#0A2540;">{threshold_human}</b>
                 </div>
@@ -1516,56 +1552,40 @@ def _humanize_threshold(rule_id, threshold):
 
 
 def _render_decision_reason_panel(decision):
-    """Panel lý do quyết định bên phải hard rules."""
+    """Panel lý do quyết định compact."""
     decision_text_map = {
-        "approved_priority": (
-            "Khách hàng có lịch sử tín dụng tốt và thu nhập ổn định. "
-            "Đủ điều kiện duyệt ưu tiên với lãi suất thấp nhất trong khung sản phẩm."
-        ),
-        "approved": (
-            "Hồ sơ đáp ứng đầy đủ tiêu chí xét duyệt với mức rủi ro thấp. "
-            "Có thể duyệt ngay với lãi suất tiêu chuẩn."
-        ),
-        "approved_conditional": (
-            "Hồ sơ đạt ngưỡng nhưng có một số yếu tố rủi ro trung bình. "
-            "Duyệt kèm điều kiện bổ sung như bảo lãnh hoặc lãi suất cao hơn."
-        ),
-        "manual_review": (
-            "Hồ sơ ở ngưỡng biên giới, cần chuyên viên thẩm định bằng tay "
-            "để đánh giá thêm các yếu tố định tính trước khi quyết định cuối."
-        ),
-        "rejected": (
-            "Hồ sơ vi phạm điều kiện loại trực tiếp — không thể xét duyệt tự động. "
-            "Khách hàng cần khắc phục các điều kiện không đạt trước khi nộp lại."
-        ),
+        "approved_priority": "Lịch sử tín dụng tốt, thu nhập ổn định. Đủ điều kiện duyệt ưu tiên với lãi suất thấp nhất.",
+        "approved": "Đáp ứng đầy đủ tiêu chí xét duyệt với mức rủi ro thấp. Duyệt với lãi suất tiêu chuẩn.",
+        "approved_conditional": "Đạt ngưỡng nhưng có yếu tố rủi ro trung bình. Duyệt kèm điều kiện bổ sung.",
+        "manual_review": "Hồ sơ ở ngưỡng biên giới, cần chuyên viên thẩm định thêm trước khi quyết định.",
+        "rejected": "Vi phạm điều kiện loại trực tiếp. Khách hàng cần khắc phục trước khi nộp lại.",
     }
     reason_text = decision_text_map.get(decision.final_decision, "Không xác định")
 
-    # Khuyến nghị tiếp theo
     if decision.final_decision == "approved_priority":
-        next_step_text = "Mời khách hàng ký hợp đồng và lựa chọn phương án trả nợ phù hợp."
+        next_step_text = "Mời ký hợp đồng và chọn phương án trả nợ."
     elif decision.final_decision == "approved":
-        next_step_text = "Tiến hành ký hợp đồng theo lãi suất tiêu chuẩn của hạng tín dụng."
+        next_step_text = "Tiến hành ký hợp đồng theo lãi suất tiêu chuẩn."
     elif decision.final_decision in ("approved_conditional", "manual_review"):
-        next_step_text = "Chuyển hồ sơ cho chuyên viên thẩm định để xác định điều kiện kèm theo."
+        next_step_text = "Chuyển hồ sơ cho chuyên viên thẩm định."
     else:
-        next_step_text = "Hướng dẫn khách hàng bổ sung hoặc khắc phục điều kiện không đạt."
+        next_step_text = "Hướng dẫn khách hàng khắc phục điều kiện không đạt."
 
     st.markdown(f"""
-    <div style="background:white; border:1px solid #E5E9F0; border-radius:8px;
-                padding:1rem 1.25rem; height:100%;">
-        <div style="font-weight:600; color:#0A2540; font-size:1rem;
-                    padding-bottom:0.6rem; margin-bottom:0.7rem;
+    <div style="background:white; border:1px solid #E5E9F0; border-radius:6px;
+                padding:0.65rem 0.85rem;">
+        <div style="font-weight:600; color:#0A2540; font-size:0.9rem;
+                    padding-bottom:0.4rem; margin-bottom:0.4rem;
                     border-bottom:1px solid #E5E9F0;">💡 Lý do quyết định</div>
-        <div style="font-size:0.88rem; color:#5A6B80; line-height:1.6;
-                    margin-bottom:1rem;">
+        <div style="font-size:0.78rem; color:#5A6B80; line-height:1.5;
+                    margin-bottom:0.5rem;">
             {reason_text}
         </div>
         <div style="background:#FDFAF2; border-left:3px solid #C9A961;
-                    border-radius:6px; padding:0.7rem 0.9rem;">
-            <div style="font-size:0.72rem; color:#5A6B80; text-transform:uppercase;
-                        letter-spacing:0.05em; font-weight:500; margin-bottom:0.25rem;">Bước tiếp theo</div>
-            <div style="font-size:0.85rem; color:#0A2540; line-height:1.5;">
+                    border-radius:4px; padding:0.4rem 0.65rem;">
+            <div style="font-size:0.65rem; color:#5A6B80; text-transform:uppercase;
+                        letter-spacing:0.04em; font-weight:500;">Bước tiếp theo</div>
+            <div style="font-size:0.75rem; color:#0A2540; line-height:1.4; margin-top:0.1rem;">
                 {next_step_text}
             </div>
         </div>
