@@ -1272,7 +1272,6 @@ def render_consolidated_dashboard(decision, scorecard):
                 box-shadow:0 2px 8px rgba(10,37,64,0.06);">
         <div style="display:grid; grid-template-columns:200px 1fr; gap:2rem; align-items:center;">
 
-            <!-- Left: Score gauge lớn -->
             <div style="text-align:center; padding-right:1.75rem;
                         border-right:1.5px solid #E0E4EC;">
                 <div style="font-size:0.72rem; color:#5A6B80; text-transform:uppercase;
@@ -1294,7 +1293,6 @@ def render_consolidated_dashboard(decision, scorecard):
                 </div>
             </div>
 
-            <!-- Right: Status + customer info + 4 metrics -->
             <div>
                 <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;">
                     <div style="background:{badge_bg}; color:{badge_text}; font-weight:700;
