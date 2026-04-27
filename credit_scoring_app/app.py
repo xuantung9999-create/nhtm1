@@ -1199,22 +1199,7 @@ def render_hero(scorecard):
     </div>
     """, height=250)
 
-def render_hero(scorecard):
-    logo_html = ""
-    if LOGO_FULL_B64:
-        logo_html = f"""
-        <div class="hero-logo-wrap">
-            <img src="data:image/png;base64,{LOGO_FULL_B64}" alt="Khá Bank" class="hero-logo"/>
-        </div>
-        """
-    st.markdown(f"""
-    <div class="hero-header">
-        {logo_html}
-        <div class="hero-badge">{t('app_badge')}</div>
-        <h1>{t('app_title')}</h1>
-        <p>{scorecard['product']['name']} · {t('app_subtitle')}</p>
-    </div>
-    """, unsafe_allow_html=True)
+
 
 
 # ============================================================
