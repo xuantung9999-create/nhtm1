@@ -1244,8 +1244,8 @@ def render_sidebar(scorecard):
                      style="height:72px; width:auto; display:inline-block;
                             filter: drop-shadow(0 4px 12px rgba(0,0,0,0.35));"/>
                 <div style="font-weight:700; color:white; margin-top:0.5rem;
-                            letter-spacing:0.04em; font-size:1.05rem;">KHÁ BANK</div>
-                <div style="font-size:0.72rem; color:#C9A961; margin-top:0.15rem;
+                            letter-spacing:0.04em; font-size:1.3rem;">KHÁ BANK</div>
+                <div style="font-size:0.9rem; color:#C9A961; margin-top:0.15rem;
                             letter-spacing:0.18em; text-transform:uppercase;
                             font-weight:600;">Bảnh Bao — Tin Cậy</div>
                 <div style="font-size:0.78rem; color:#8593A8; margin-top:0.5rem;">{t('sidebar_sub')}</div>
