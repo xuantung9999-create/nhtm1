@@ -31,6 +31,12 @@ import streamlit as st
 from engine import CreditScoringPipeline, calculate_both_plans
 
 
+@st.cache_data(show_spinner=False)
+def cached_calculate_both_plans(principal: float, annual_rate: float, term_months: int):
+    """Cached version - tránh tính lại khi slider trigger rerun với cùng giá trị."""
+    return calculate_both_plans(principal, annual_rate, term_months)
+
+
 # ============================================================
 # CONFIG
 # ============================================================
@@ -520,7 +526,9 @@ def init_state():
 
 def reset_state():
     keys_to_clear = ["step", "applicant", "profile_meta", "uploaded_files",
-                     "selected_persona", "selected_rate"]
+                     "selected_persona", "selected_rate",
+                     "calc_loan_amount", "calc_term_months",
+                     "rate_slider", "amount_slider", "term_slider"]
     for key in keys_to_clear:
         if key in st.session_state:
             del st.session_state[key]
@@ -1642,7 +1650,7 @@ def render_repayment_with_slider(loan_amount, grade_result, term_months, scoreca
         st.info("ℹ️ Hồ sơ bị từ chối, không tính phương án trả nợ.")
         return
 
-    # Fallback: nếu engine cũ chưa có interest_rate_min/max, dùng ±2% quanh interest_rate_annual
+    # Fallback nếu engine cũ
     rate_min = getattr(grade_result, "interest_rate_min", None)
     rate_max = getattr(grade_result, "interest_rate_max", None)
     if rate_min is None or rate_max is None:
@@ -1650,27 +1658,50 @@ def render_repayment_with_slider(loan_amount, grade_result, term_months, scoreca
         rate_min = max(0.0, base_rate - 0.02)
         rate_max = base_rate + 0.02
 
-    # === v3: SLIDER ===
-    st.markdown("#### Chọn lãi suất áp dụng")
-    st.caption(
-        f"Hạng **{grade_result.grade}** có khoảng lãi suất đề xuất từ "
-        f"**{rate_min*100:.1f}%** đến **{rate_max*100:.1f}%**/năm. "
-        "Kéo thanh trượt để chọn mức lãi suất cụ thể — bảng lịch trả nợ sẽ tự cập nhật."
-    )
-
-    # Init selected_rate nếu chưa có
+    # Init state
     if st.session_state.selected_rate is None:
         st.session_state.selected_rate = grade_result.interest_rate_annual
+    if "calc_loan_amount" not in st.session_state:
+        st.session_state.calc_loan_amount = loan_amount
+    if "calc_term_months" not in st.session_state:
+        st.session_state.calc_term_months = term_months
 
-    # Đảm bảo selected_rate trong khoảng hợp lệ (phòng đổi hạng)
+    # Đảm bảo selected_rate trong khoảng hợp lệ
     if (st.session_state.selected_rate < rate_min or
         st.session_state.selected_rate > rate_max):
         st.session_state.selected_rate = grade_result.interest_rate_annual
 
-    col_slider, col_info = st.columns([3, 1])
-    with col_slider:
-        selected_rate = st.slider(
-            "Lãi suất áp dụng (%/năm)",
+    # === HEADER ===
+    st.markdown(f"""
+    <div style="display:flex; align-items:flex-end; gap:0.6rem; margin-bottom:0.5rem;">
+        <h3 style="margin:0; color:#0A2540; font-weight:600; font-size:1.15rem;">
+            🧮 Công cụ ước tính khoản vay
+        </h3>
+        <span style="color:#5A6B80; font-size:0.82rem; padding-bottom:0.2rem;">
+            Hạng <b style="color:#C9A961;">{grade_result.grade}</b> · Khoảng lãi suất {rate_min*100:.0f}% – {rate_max*100:.0f}%/năm
+        </span>
+    </div>
+    <div style="height:3px; width:60px; background:linear-gradient(90deg, #C9A961, #E0C988);
+                border-radius:2px; margin-bottom:1rem;"></div>
+    """, unsafe_allow_html=True)
+
+    # === LAYOUT: 3 sliders trái | Monthly payment + actions phải ===
+    col_sliders, col_payment = st.columns([3, 2])
+
+    with col_sliders:
+        # === Slider 1: Lãi suất ===
+        rate_label_html = f"""
+        <div style="display:flex; justify-content:space-between; align-items:baseline;
+                    margin-bottom:0.25rem;">
+            <span style="font-size:0.88rem; font-weight:600; color:#0A2540;">Lãi suất áp dụng</span>
+            <span style="font-size:1.1rem; font-weight:700; color:#C9A961;">
+                {st.session_state.selected_rate*100:.1f}<span style="font-size:0.8rem; font-weight:500;">%/năm</span>
+            </span>
+        </div>
+        """
+        st.markdown(rate_label_html, unsafe_allow_html=True)
+        new_rate = st.slider(
+            "Lãi suất",
             min_value=float(rate_min * 100),
             max_value=float(rate_max * 100),
             value=float(st.session_state.selected_rate * 100),
@@ -1679,130 +1710,229 @@ def render_repayment_with_slider(loan_amount, grade_result, term_months, scoreca
             key="rate_slider",
             label_visibility="collapsed",
         )
-        st.session_state.selected_rate = selected_rate / 100
+        st.session_state.selected_rate = new_rate / 100
 
-    with col_info:
-        avg_rate = grade_result.interest_rate_annual * 100
-        diff = selected_rate - avg_rate
-        diff_color = "var(--success)" if diff < 0 else ("var(--danger)" if diff > 0 else "var(--text-secondary)")
-        diff_sign = "+" if diff > 0 else ""
+        # === Slider 2: Số tiền vay ===
+        amount_label_html = f"""
+        <div style="display:flex; justify-content:space-between; align-items:baseline;
+                    margin-top:0.5rem; margin-bottom:0.25rem;">
+            <span style="font-size:0.88rem; font-weight:600; color:#0A2540;">Số tiền vay</span>
+            <span style="font-size:1.1rem; font-weight:700; color:#C9A961;">
+                {st.session_state.calc_loan_amount:,.0f}<span style="font-size:0.8rem; font-weight:500;"> VNĐ</span>
+            </span>
+        </div>
+        """
+        st.markdown(amount_label_html, unsafe_allow_html=True)
+        # Khoảng số tiền: ±50% so với loan_amount gốc, min 5tr, max 200tr
+        amount_min = max(5_000_000, int(loan_amount * 0.5))
+        amount_max = min(200_000_000, int(loan_amount * 2))
+        new_amount = st.slider(
+            "Số tiền vay",
+            min_value=amount_min,
+            max_value=amount_max,
+            value=int(st.session_state.calc_loan_amount),
+            step=1_000_000,
+            format="%d",
+            key="amount_slider",
+            label_visibility="collapsed",
+        )
+        st.session_state.calc_loan_amount = new_amount
+
+        # === Slider 3: Kỳ hạn ===
+        term_label_html = f"""
+        <div style="display:flex; justify-content:space-between; align-items:baseline;
+                    margin-top:0.5rem; margin-bottom:0.25rem;">
+            <span style="font-size:0.88rem; font-weight:600; color:#0A2540;">Kỳ hạn vay</span>
+            <span style="font-size:1.1rem; font-weight:700; color:#C9A961;">
+                {st.session_state.calc_term_months}<span style="font-size:0.8rem; font-weight:500;"> tháng</span>
+            </span>
+        </div>
+        """
+        st.markdown(term_label_html, unsafe_allow_html=True)
+        new_term = st.slider(
+            "Kỳ hạn",
+            min_value=6,
+            max_value=36,
+            value=int(st.session_state.calc_term_months),
+            step=3,
+            format="%d tháng",
+            key="term_slider",
+            label_visibility="collapsed",
+        )
+        st.session_state.calc_term_months = new_term
+
+    # === Tính plans với giá trị hiện tại ===
+    annual_rate = st.session_state.selected_rate
+    current_loan = st.session_state.calc_loan_amount
+    current_term = st.session_state.calc_term_months
+    plans = cached_calculate_both_plans(current_loan, annual_rate, current_term)
+    p1 = plans["plan_1_annuity"]
+    p2 = plans["plan_2_equal_principal"]
+
+    with col_payment:
+        # Monthly payment box - PA1 (niên kim, đều mỗi tháng)
+        monthly_pmt = p1.payments[0].total_payment
+
         st.markdown(f"""
-        <div style="background:#FDFAF2; border:1px solid var(--gold-light);
-                    border-radius:8px; padding:0.85rem 1rem; text-align:center;">
-            <div style="font-size:0.78rem; color:var(--text-secondary);">So với mặc định {avg_rate:.1f}%</div>
-            <div style="font-size:1.2rem; font-weight:600; color:{diff_color}; margin-top:0.3rem;">
-                {diff_sign}{diff:.1f}%
+        <div style="background:linear-gradient(135deg, #FDFAF2 0%, #FFFFFF 100%);
+                    border:1.5px solid #C9A961; border-radius:10px;
+                    padding:1.1rem 1.25rem; height:100%;
+                    box-shadow:0 2px 8px rgba(201,169,97,0.12);">
+            <div style="font-size:0.78rem; color:#5A6B80; text-transform:uppercase;
+                        letter-spacing:0.05em; font-weight:500;">Khoản trả góp hàng tháng</div>
+            <div style="text-align:center; padding:0.75rem 0;">
+                <span style="font-size:2rem; font-weight:700; color:#C9A961;
+                             letter-spacing:-0.02em; line-height:1;">
+                    {monthly_pmt:,.0f}
+                </span>
+                <span style="font-size:0.95rem; color:#5A6B80; margin-left:0.3rem;">VNĐ</span>
+            </div>
+            <div style="background:#F5F7FA; border-radius:6px; padding:0.5rem 0.75rem;
+                        font-size:0.78rem; color:#5A6B80; line-height:1.5;">
+                <div style="display:flex; justify-content:space-between; padding:0.15rem 0;">
+                    <span>Tổng tiền lãi</span>
+                    <span style="color:#0A2540; font-weight:600;">{p1.total_interest:,.0f} VNĐ</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:0.15rem 0;
+                            border-top:1px dashed #E5E9F0; margin-top:0.25rem; padding-top:0.35rem;">
+                    <span>Tổng phải trả</span>
+                    <span style="color:#0A2540; font-weight:600;">{p1.total_paid:,.0f} VNĐ</span>
+                </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-    # === Tính plans với rate đã chọn ===
-    annual_rate = st.session_state.selected_rate
-    plans = calculate_both_plans(loan_amount, annual_rate, term_months)
-    p1 = plans["plan_1_annuity"]
-    p2 = plans["plan_2_equal_principal"]
-
-    # === Metric row ===
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("#### Tổng quan khoản vay với lãi suất đã chọn")
+    # === Ghi chú ===
     st.markdown(f"""
-    <div class="info-grid" style="grid-template-columns:repeat(4,1fr); margin-bottom:1.5rem;">
-        <div class="info-item">
-            <div class="info-item-label">Số tiền vay</div>
-            <div class="info-item-value">{loan_amount:,.0f} VNĐ</div>
+    <div style="margin-top:0.75rem; padding:0.6rem 0.85rem; background:#F5F7FA;
+                border-left:3px solid #5A6B80; border-radius:4px;
+                font-size:0.78rem; color:#5A6B80; font-style:italic; line-height:1.5;">
+        <b style="color:#0A2540; font-style:normal;">*Ghi chú:</b>
+        Khoản trả tháng hiển thị theo phương án niên kim (gốc + lãi đều).
+        Kết quả tính toán mang tính chất tham khảo và có thể sai lệch nhỏ với kết quả thực tế tại các điểm giao dịch.
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<div style="height:1.2rem;"></div>', unsafe_allow_html=True)
+
+    # === SO SÁNH 2 PHƯƠNG ÁN - 3 cột metrics ===
+    saving = p1.total_interest - p2.total_interest
+    saving_pct = (saving / p1.total_interest * 100) if p1.total_interest > 0 else 0
+    p2_first = p2.payments[0].total_payment
+    p2_last = p2.payments[-1].total_payment
+
+    st.markdown(f"""
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+        <div style="background:white; border:1px solid #E5E9F0; border-left:3px solid #0A2540;
+                    border-radius:8px; padding:0.85rem 1rem;">
+            <div style="font-size:0.7rem; color:#5A6B80; text-transform:uppercase;
+                        letter-spacing:0.05em; font-weight:500;">📘 PA1 · Niên kim</div>
+            <div style="font-size:0.78rem; color:#5A6B80; margin-top:0.2rem;">Trả đều mỗi kỳ</div>
+            <div style="font-size:1.1rem; font-weight:700; color:#0A2540; margin-top:0.3rem;">
+                {monthly_pmt:,.0f} VNĐ
+            </div>
+            <div style="font-size:0.72rem; color:#5A6B80; margin-top:0.15rem;">
+                Tổng lãi: <b style="color:#0A2540;">{p1.total_interest:,.0f} VNĐ</b>
+            </div>
         </div>
-        <div class="info-item" style="border-color:var(--gold);">
-            <div class="info-item-label">Lãi suất đã chọn</div>
-            <div class="info-item-value gold">{annual_rate*100:.1f}%/năm</div>
+        <div style="background:white; border:1px solid #E5E9F0; border-left:3px solid #C9A961;
+                    border-radius:8px; padding:0.85rem 1rem;">
+            <div style="font-size:0.7rem; color:#5A6B80; text-transform:uppercase;
+                        letter-spacing:0.05em; font-weight:500;">📙 PA2 · Gốc đều</div>
+            <div style="font-size:0.78rem; color:#5A6B80; margin-top:0.2rem;">Trả giảm dần</div>
+            <div style="font-size:1.1rem; font-weight:700; color:#0A2540; margin-top:0.3rem;">
+                {p2_first:,.0f} → {p2_last:,.0f}
+            </div>
+            <div style="font-size:0.72rem; color:#5A6B80; margin-top:0.15rem;">
+                Tổng lãi: <b style="color:#0F7A5C;">{p2.total_interest:,.0f} VNĐ</b>
+            </div>
         </div>
-        <div class="info-item">
-            <div class="info-item-label">Kỳ hạn</div>
-            <div class="info-item-value">{term_months} tháng</div>
-        </div>
-        <div class="info-item">
-            <div class="info-item-label">PA2 tiết kiệm</div>
-            <div class="info-item-value success">{(p1.total_interest - p2.total_interest):,.0f} VNĐ</div>
+        <div style="background:linear-gradient(135deg, #F5FBF8 0%, #FFFFFF 100%);
+                    border:1px solid #0F7A5C33; border-left:3px solid #0F7A5C;
+                    border-radius:8px; padding:0.85rem 1rem;">
+            <div style="font-size:0.7rem; color:#5A6B80; text-transform:uppercase;
+                        letter-spacing:0.05em; font-weight:500;">💰 PA2 tiết kiệm so với PA1</div>
+            <div style="font-size:0.78rem; color:#5A6B80; margin-top:0.2rem;">Số lãi giảm được</div>
+            <div style="font-size:1.1rem; font-weight:700; color:#0F7A5C; margin-top:0.3rem;">
+                {saving:,.0f} VNĐ
+            </div>
+            <div style="font-size:0.72rem; color:#5A6B80; margin-top:0.15rem;">
+                Tương đương <b style="color:#0F7A5C;">{saving_pct:.1f}%</b> tổng lãi
+            </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # === Two plans side by side ===
-    st.markdown("#### Lịch trả nợ chi tiết")
-    col1, col2 = st.columns(2)
+    # === Tabs: Chart | Bảng PA1 | Bảng PA2 | Tải file ===
+    tab_chart, tab_p1, tab_p2, tab_download = st.tabs([
+        "📈  Biểu đồ so sánh",
+        "📘  Lịch trả PA1",
+        "📙  Lịch trả PA2",
+        "⬇️  Tải file",
+    ])
 
-    with col1:
-        st.markdown(f"""
-        <div style="background:#F5F7FA; padding:1rem; border-radius:8px;
-                    border-left:3px solid var(--navy); margin-bottom:0.5rem;">
-            <div style="font-weight:600; color:var(--navy); font-size:1rem;">📘 Phương án 1: Niên kim</div>
-            <div style="font-size:0.85rem; color:var(--text-secondary);">
-                Gốc + lãi đều — dòng tiền ổn định {p1.payments[0].total_payment:,.0f} VNĐ/kỳ
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+    with tab_chart:
+        # 2 charts: dòng tiền mỗi kỳ + dư nợ giảm dần
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.markdown(
+                '<div style="font-weight:600; color:#0A2540; font-size:0.9rem; margin-bottom:0.4rem;">'
+                'Dòng tiền trả mỗi kỳ</div>',
+                unsafe_allow_html=True,
+            )
+            cashflow_df = pd.DataFrame({
+                "Kỳ": [p.period for p in p1.payments],
+                "PA1 — Niên kim": [p.total_payment for p in p1.payments],
+                "PA2 — Gốc đều": [p.total_payment for p in p2.payments],
+            }).set_index("Kỳ")
+            st.line_chart(cashflow_df, height=240, color=["#0A2540", "#C9A961"])
+        with col_b:
+            st.markdown(
+                '<div style="font-weight:600; color:#0A2540; font-size:0.9rem; margin-bottom:0.4rem;">'
+                'Dư nợ còn lại theo thời gian</div>',
+                unsafe_allow_html=True,
+            )
+            balance_df = pd.DataFrame({
+                "Kỳ": [p.period for p in p1.payments],
+                "PA1 — Niên kim": [p.closing_balance for p in p1.payments],
+                "PA2 — Gốc đều": [p.closing_balance for p in p2.payments],
+            }).set_index("Kỳ")
+            st.area_chart(balance_df, height=240, color=["#0A2540", "#C9A961"])
+
+    with tab_p1:
         df1 = schedule_to_df(p1)
-        st.dataframe(df1, use_container_width=True, hide_index=True, height=320)
-        st.markdown(f"""
-        <div style="background:#FDFAF2; padding:0.75rem; border-radius:6px;
-                    border:1px solid var(--gold-light);">
-            <div style="font-size:0.85rem; color:var(--text-secondary);">Tổng lãi</div>
-            <div style="font-weight:600; color:var(--navy); font-size:1.1rem;">{p1.total_interest:,.0f} VNĐ</div>
-            <div style="font-size:0.85rem; color:var(--text-secondary); margin-top:0.5rem;">Tổng phải trả</div>
-            <div style="font-weight:600; color:var(--navy); font-size:1.1rem;">{p1.total_paid:,.0f} VNĐ</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.dataframe(df1, use_container_width=True, hide_index=True, height=380)
 
-    with col2:
-        st.markdown(f"""
-        <div style="background:#F5F7FA; padding:1rem; border-radius:8px;
-                    border-left:3px solid var(--gold); margin-bottom:0.5rem;">
-            <div style="font-weight:600; color:var(--navy); font-size:1rem;">📙 Phương án 2: Gốc đều</div>
-            <div style="font-size:0.85rem; color:var(--text-secondary);">
-                Gốc cố định, lãi giảm dần — kỳ đầu {p2.payments[0].total_payment:,.0f} → kỳ cuối {p2.payments[-1].total_payment:,.0f}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+    with tab_p2:
         df2 = schedule_to_df(p2)
-        st.dataframe(df2, use_container_width=True, hide_index=True, height=320)
-        st.markdown(f"""
-        <div style="background:#FDFAF2; padding:0.75rem; border-radius:6px;
-                    border:1px solid var(--gold-light);">
-            <div style="font-size:0.85rem; color:var(--text-secondary);">Tổng lãi</div>
-            <div style="font-weight:600; color:var(--success); font-size:1.1rem;">{p2.total_interest:,.0f} VNĐ</div>
-            <div style="font-size:0.85rem; color:var(--text-secondary); margin-top:0.5rem;">Tổng phải trả</div>
-            <div style="font-weight:600; color:var(--navy); font-size:1.1rem;">{p2.total_paid:,.0f} VNĐ</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.dataframe(df2, use_container_width=True, hide_index=True, height=380)
 
-    # Comparison chart
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("#### So sánh dòng tiền mỗi kỳ")
-    compare_df = pd.DataFrame({
-        "Kỳ": [p.period for p in p1.payments],
-        "PA1 — Niên kim": [p.total_payment for p in p1.payments],
-        "PA2 — Gốc đều": [p.total_payment for p in p2.payments],
-    }).set_index("Kỳ")
-    st.line_chart(compare_df, height=280, color=["#0A2540", "#C9A961"])
-
-    # Download
-    st.markdown("<br>", unsafe_allow_html=True)
-    col1, col2 = st.columns(2)
-    with col1:
-        excel_bytes = export_to_excel(p1, p2, loan_amount, annual_rate, term_months)
-        st.download_button(
-            "📊  Tải file Excel (cả 2 phương án)",
-            data=excel_bytes,
-            file_name=f"lich_tra_no_{loan_amount//1_000_000}trieu_{term_months}thang_{annual_rate*100:.0f}%.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
+    with tab_download:
+        st.markdown(
+            '<p style="color:#5A6B80; font-size:0.85rem; margin-bottom:0.75rem;">'
+            'Tải lịch trả nợ về máy để chia sẻ hoặc lưu trữ.</p>',
+            unsafe_allow_html=True,
         )
-    with col2:
-        csv1 = df1.to_csv(index=False).encode("utf-8-sig")
-        st.download_button(
-            "📄  Tải CSV (chỉ PA1)",
-            data=csv1, file_name="pa1_nien_kim.csv",
-            mime="text/csv", use_container_width=True,
-        )
+        col1, col2 = st.columns(2)
+        with col1:
+            df1 = schedule_to_df(p1)
+            excel_bytes = export_to_excel(p1, p2, current_loan, annual_rate, current_term)
+            st.download_button(
+                "📊  Tải Excel (cả 2 phương án)",
+                data=excel_bytes,
+                file_name=f"lich_tra_no_{current_loan//1_000_000}trieu_{current_term}thang_{annual_rate*100:.0f}%.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True,
+            )
+        with col2:
+            csv1 = df1.to_csv(index=False).encode("utf-8-sig")
+            st.download_button(
+                "📄  Tải CSV (chỉ PA1)",
+                data=csv1,
+                file_name=f"pa1_nien_kim_{current_loan//1_000_000}trieu.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
 
 
 # ============================================================
