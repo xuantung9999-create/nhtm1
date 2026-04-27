@@ -1184,10 +1184,34 @@ def render_hero(scorecard):
         padding: 24px;
         border-radius: 16px;
         color: white;
+        font-family: Arial, sans-serif;
     }}
+
+    .hero-logo-wrap {{
+        margin-bottom: 10px;
+    }}
+
+    .hero-logo {{
+        max-width: 150px;
+        height: auto;
+        display: block;
+    }}
+
     .hero-badge {{
         font-size: 14px;
         opacity: 0.8;
+        margin-bottom: 8px;
+    }}
+
+    h1 {{
+        margin: 5px 0;
+        font-size: 28px;
+        color: white;
+    }}
+
+    p {{
+        margin: 0;
+        color: #d1d5db;
     }}
     </style>
 
@@ -1198,9 +1222,6 @@ def render_hero(scorecard):
         <p>{scorecard['product']['name']} · {t('app_subtitle')}</p>
     </div>
     """, height=250)
-
-
-
 
 # ============================================================
 # SIDEBAR (with language switcher)
