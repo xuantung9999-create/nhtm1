@@ -1301,78 +1301,103 @@ def render_dashboard_hero(decision, scorecard):
 # ============================================================
 
 def render_quick_summary(decision):
-    """3 card: Hard rules tóm tắt, Điểm theo nhóm, Quyết định + lý do."""
+    """3 card: Hard rules tóm tắt, Điểm theo nhóm, Quyết định + lý do.
+    Dùng st.columns thay vì raw HTML để tránh issue escape ký tự < > trong text."""
 
-    # Card 1: Hard rules summary
-    hard_passed = sum(1 for c in decision.hard_rules_result.checks if c.passed)
-    hard_total = len(decision.hard_rules_result.checks)
-    hard_status_color = "var(--success)" if decision.hard_rules_result.all_passed else "var(--danger)"
-    hard_status_text = "Tất cả PASS" if decision.hard_rules_result.all_passed else f"{hard_total - hard_passed} điều kiện FAIL"
-
-    hard_rows = ""
-    for check in decision.hard_rules_result.checks:
-        icon = "✓" if check.passed else "✗"
-        color = "var(--success)" if check.passed else "var(--danger)"
-        # Cắt description ngắn cho summary
-        short_desc = check.description.split(".")[0][:35]
-        if len(check.description) > 35:
-            short_desc += "…"
-        hard_rows += f"""
-        <div class="summary-card-row">
-            <span class="label" style="font-size:0.8rem;">{short_desc}</span>
-            <span class="value" style="color:{color}; font-weight:700;">{icon}</span>
-        </div>"""
-
-    # Card 2: Score by group
-    score_rows = ""
-    if decision.scoring_result:
-        for g in decision.scoring_result.groups:
-            pct = g.ratio * 100
-            color = "var(--success)" if pct >= 75 else ("var(--warning)" if pct >= 50 else "var(--danger)")
-            score_rows += f"""
-            <div class="summary-card-row">
-                <span class="label" style="font-size:0.82rem;">{g.group_name}</span>
-                <span class="value" style="color:{color};">{g.points}/{g.max_points} ({pct:.0f}%)</span>
-            </div>"""
-    else:
-        score_rows = '<div style="color:var(--text-secondary); font-size:0.85rem; padding:0.5rem 0;">Không chấm điểm do fail hard rules</div>'
-
-    # Card 3: Decision + reason
+    # Decision reason map
     decision_text_map = {
-        "approved_priority": ("Khách hàng có lịch sử tín dụng tốt và thu nhập ổn định. Đủ điều kiện duyệt ưu tiên với lãi suất thấp nhất trong khung sản phẩm.", "var(--success)"),
-        "approved": ("Hồ sơ đáp ứng đầy đủ tiêu chí xét duyệt với mức rủi ro thấp. Có thể duyệt ngay với lãi suất tiêu chuẩn.", "var(--success)"),
-        "approved_conditional": ("Hồ sơ đạt ngưỡng nhưng có một số yếu tố rủi ro trung bình. Duyệt kèm điều kiện bổ sung (ví dụ: bảo lãnh, lãi suất cao hơn).", "var(--warning)"),
-        "manual_review": ("Hồ sơ ở ngưỡng biên giới, cần chuyên viên thẩm định bằng tay để đánh giá thêm các yếu tố định tính trước khi quyết định cuối.", "var(--warning)"),
-        "rejected": ("Hồ sơ vi phạm hard rules — không thể xét duyệt tự động. Khách hàng cần khắc phục trước khi nộp lại.", "var(--danger)"),
+        "approved_priority": "Khách hàng có lịch sử tín dụng tốt và thu nhập ổn định. Đủ điều kiện duyệt ưu tiên với lãi suất thấp nhất trong khung sản phẩm.",
+        "approved": "Hồ sơ đáp ứng đầy đủ tiêu chí xét duyệt với mức rủi ro thấp. Có thể duyệt ngay với lãi suất tiêu chuẩn.",
+        "approved_conditional": "Hồ sơ đạt ngưỡng nhưng có một số yếu tố rủi ro trung bình. Duyệt kèm điều kiện bổ sung (ví dụ: bảo lãnh, lãi suất cao hơn).",
+        "manual_review": "Hồ sơ ở ngưỡng biên giới, cần chuyên viên thẩm định bằng tay để đánh giá thêm các yếu tố định tính trước khi quyết định cuối.",
+        "rejected": "Hồ sơ vi phạm hard rules — không thể xét duyệt tự động. Khách hàng cần khắc phục trước khi nộp lại.",
     }
-    reason_text, reason_color = decision_text_map.get(
-        decision.final_decision,
-        ("Không xác định", "var(--text-secondary)")
-    )
+    reason_text = decision_text_map.get(decision.final_decision, "Không xác định")
 
-    st.markdown(f"""
-    <div class="quick-summary">
-        <div class="summary-card">
-            <div class="summary-card-header">
-                🛡️ Hard Rules
-                <span style="margin-left:auto; color:{hard_status_color}; font-size:0.78rem;">
+    # 3 columns layout
+    col1, col2, col3 = st.columns(3)
+
+    # === Card 1: Hard Rules ===
+    with col1:
+        hard_passed = sum(1 for c in decision.hard_rules_result.checks if c.passed)
+        hard_total = len(decision.hard_rules_result.checks)
+        hard_color = "#0F7A5C" if decision.hard_rules_result.all_passed else "#B33A3A"
+        hard_status_text = "Tất cả PASS" if decision.hard_rules_result.all_passed else f"{hard_total - hard_passed} FAIL"
+
+        st.markdown(f"""
+        <div style="background:white; border:1px solid #E5E9F0; border-radius:10px;
+                    padding:1rem 1.25rem; height:100%;">
+            <div style="display:flex; align-items:center; gap:0.5rem; padding-bottom:0.6rem;
+                        margin-bottom:0.6rem; border-bottom:1px solid #E5E9F0;">
+                <div style="font-size:0.9rem; font-weight:600; color:#0A2540;">🛡️ Hard Rules</div>
+                <div style="margin-left:auto; color:{hard_color}; font-size:0.75rem; font-weight:500;">
                     {hard_passed}/{hard_total} · {hard_status_text}
-                </span>
+                </div>
             </div>
-            {hard_rows}
         </div>
-        <div class="summary-card">
-            <div class="summary-card-header">📊 Điểm theo nhóm</div>
-            {score_rows}
+        """, unsafe_allow_html=True)
+
+        # Render từng dòng riêng để tránh HTML escape issue
+        for check in decision.hard_rules_result.checks:
+            icon = "✓" if check.passed else "✗"
+            color = "#0F7A5C" if check.passed else "#B33A3A"
+            short_desc = check.description.split(".")[0]
+            if len(short_desc) > 38:
+                short_desc = short_desc[:35] + "…"
+
+            # Replace HTML special chars để Streamlit không hiểu nhầm
+            safe_desc = (short_desc
+                         .replace("<", "&lt;")
+                         .replace(">", "&gt;"))
+
+            st.markdown(f"""
+            <div style="display:flex; justify-content:space-between; align-items:center;
+                        padding:0.3rem 0; font-size:0.82rem;">
+                <span style="color:#5A6B80;">{safe_desc}</span>
+                <span style="color:{color}; font-weight:700; font-size:1rem;">{icon}</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # === Card 2: Score by group ===
+    with col2:
+        st.markdown("""
+        <div style="background:white; border:1px solid #E5E9F0; border-radius:10px;
+                    padding:1rem 1.25rem;">
+            <div style="font-size:0.9rem; font-weight:600; color:#0A2540;
+                        padding-bottom:0.6rem; margin-bottom:0.6rem;
+                        border-bottom:1px solid #E5E9F0;">📊 Điểm theo nhóm</div>
         </div>
-        <div class="summary-card">
-            <div class="summary-card-header">💡 Lý do quyết định</div>
-            <div style="font-size:0.85rem; color:var(--text-secondary); line-height:1.55; padding:0.3rem 0;">
+        """, unsafe_allow_html=True)
+
+        if decision.scoring_result:
+            for g in decision.scoring_result.groups:
+                pct = g.ratio * 100
+                color = "#0F7A5C" if pct >= 75 else ("#B87300" if pct >= 50 else "#B33A3A")
+                st.markdown(f"""
+                <div style="display:flex; justify-content:space-between; align-items:center;
+                            padding:0.3rem 0; font-size:0.82rem;">
+                    <span style="color:#5A6B80;">{g.group_name}</span>
+                    <span style="color:{color}; font-weight:500;">{g.points}/{g.max_points} ({pct:.0f}%)</span>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.caption("_Không chấm điểm do fail hard rules_")
+
+    # === Card 3: Decision reason ===
+    with col3:
+        st.markdown(f"""
+        <div style="background:white; border:1px solid #E5E9F0; border-radius:10px;
+                    padding:1rem 1.25rem; height:100%;">
+            <div style="font-size:0.9rem; font-weight:600; color:#0A2540;
+                        padding-bottom:0.6rem; margin-bottom:0.6rem;
+                        border-bottom:1px solid #E5E9F0;">💡 Lý do quyết định</div>
+            <div style="font-size:0.85rem; color:#5A6B80; line-height:1.55;">
                 {reason_text}
             </div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
 
 
 def render_rejection_detail(decision):
@@ -1698,25 +1723,146 @@ def render_scoring_detail(scoring_result):
         return
 
     st.markdown("#### Phân tích điểm theo nhóm")
-    group_data = pd.DataFrame([
-        {"Nhóm": g.group_name, "Điểm đạt": g.points, "Điểm tối đa": g.max_points}
-        for g in scoring_result.groups
-    ])
-    st.bar_chart(
-        group_data.set_index("Nhóm")[["Điểm đạt", "Điểm tối đa"]],
-        height=280, color=["#0A2540", "#C9A961"],
-    )
+    st.caption("So sánh điểm đạt được với điểm tối đa của từng nhóm chứng từ. Tỷ lệ % chuẩn hoá để so sánh giữa các nhóm có trọng số khác nhau.")
 
+    # Custom horizontal progress bars - đẹp + dễ so sánh hơn st.bar_chart
+    for g in scoring_result.groups:
+        pct = g.ratio * 100
+        # Color theo performance
+        if pct >= 80:
+            color = "#0F7A5C"  # green
+            label = "Xuất sắc"
+        elif pct >= 65:
+            color = "#5B8C6E"  # green-yellow
+            label = "Tốt"
+        elif pct >= 50:
+            color = "#B87300"  # warning
+            label = "Trung bình"
+        else:
+            color = "#B33A3A"  # danger
+            label = "Cần cải thiện"
+
+        st.markdown(f"""
+        <div style="background:white; border:1px solid #E5E9F0; border-radius:10px;
+                    padding:1rem 1.25rem; margin-bottom:0.75rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
+                <div>
+                    <span style="font-weight:600; color:#0A2540; font-size:0.95rem;">{g.group_name}</span>
+                    <span style="color:#5A6B80; font-size:0.78rem; margin-left:0.5rem;">·  Trọng số {g.weight*100:.0f}%</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <span style="background:{color}; color:white; font-size:0.7rem;
+                                 padding:0.15rem 0.5rem; border-radius:4px; font-weight:500;">{label}</span>
+                    <span style="font-weight:600; color:#0A2540; font-size:1rem;">{g.points}<span style="color:#5A6B80; font-weight:400;"> / {g.max_points}</span></span>
+                    <span style="font-weight:700; color:{color}; font-size:1.1rem; min-width:55px; text-align:right;">{pct:.0f}%</span>
+                </div>
+            </div>
+            <div style="background:#F0F2F5; height:12px; border-radius:6px; overflow:hidden; position:relative;">
+                <div style="background:linear-gradient(90deg, {color}, {color}DD);
+                            height:100%; width:{pct}%; border-radius:6px;
+                            transition:width 0.3s ease;"></div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Tổng kết
+    total_pct = scoring_result.ratio * 100
+    if total_pct >= 80:
+        total_color = "#0F7A5C"
+    elif total_pct >= 65:
+        total_color = "#5B8C6E"
+    elif total_pct >= 50:
+        total_color = "#B87300"
+    else:
+        total_color = "#B33A3A"
+
+    st.markdown(f"""
+    <div style="background:linear-gradient(135deg, #0A2540 0%, #1B3A5C 100%);
+                border-radius:10px; padding:1.25rem 1.5rem; margin-top:1rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <div style="color:#D4DCE8; font-size:0.78rem; text-transform:uppercase;
+                            letter-spacing:0.05em; font-weight:500;">Tổng điểm</div>
+                <div style="color:white; font-weight:700; font-size:1.8rem; margin-top:0.2rem;">
+                    {scoring_result.total_points}<span style="color:#8593A8; font-weight:400; font-size:1.2rem;"> / {scoring_result.max_total_points}</span>
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <div style="color:#D4DCE8; font-size:0.78rem; text-transform:uppercase;
+                            letter-spacing:0.05em; font-weight:500;">Tỷ lệ đạt</div>
+                <div style="color:#C9A961; font-weight:700; font-size:1.8rem; margin-top:0.2rem;">{total_pct:.1f}%</div>
+            </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.15); height:10px; border-radius:5px;
+                    margin-top:1rem; overflow:hidden;">
+            <div style="background:linear-gradient(90deg, #C9A961, #E0C988);
+                        height:100%; width:{total_pct}%; border-radius:5px;"></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # === Chi tiết từng biến với layout đẹp hơn ===
+    st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("#### Chi tiết từng biến")
+    st.caption("Click vào từng nhóm để xem chi tiết điểm của từng biến cấu thành.")
+
     for group in scoring_result.groups:
-        with st.expander(f"{group.group_name} · {group.points}/{group.max_points} điểm ({group.ratio*100:.0f}%)"):
-            df = pd.DataFrame([
-                {"Biến": v.variable_name, "Giá trị thực tế": str(v.actual_value),
-                 "Điểm đạt": v.points, "Điểm tối đa": v.max_points,
-                 "Tỷ lệ": f"{(v.points/v.max_points*100) if v.max_points>0 else 0:.0f}%"}
-                for v in group.variables
-            ])
-            st.dataframe(df, use_container_width=True, hide_index=True)
+        with st.expander(
+            f"📂  {group.group_name}  ·  {group.points}/{group.max_points} điểm  ·  {group.ratio*100:.0f}%",
+            expanded=False,
+        ):
+            for v in group.variables:
+                var_pct = (v.points / v.max_points * 100) if v.max_points > 0 else 0
+                if var_pct >= 80:
+                    var_color = "#0F7A5C"
+                elif var_pct >= 50:
+                    var_color = "#B87300"
+                else:
+                    var_color = "#B33A3A"
+
+                # Format giá trị thực tế đẹp hơn
+                actual_str = str(v.actual_value)
+                if len(actual_str) > 30:
+                    actual_str = actual_str[:27] + "..."
+                # Escape HTML
+                actual_str = (actual_str.replace("<", "&lt;").replace(">", "&gt;"))
+
+                st.markdown(f"""
+                <div style="background:#FAFBFC; border:1px solid #E5E9F0; border-radius:8px;
+                            padding:0.85rem 1rem; margin-bottom:0.5rem;">
+                    <div style="display:grid; grid-template-columns: 2fr 2fr 1fr 1fr;
+                                gap:1rem; align-items:center;">
+                        <div>
+                            <div style="font-size:0.72rem; color:#5A6B80; text-transform:uppercase;
+                                        letter-spacing:0.04em; font-weight:500;">Biến</div>
+                            <div style="font-weight:500; color:#0A2540; margin-top:0.15rem;">{v.variable_name}</div>
+                        </div>
+                        <div>
+                            <div style="font-size:0.72rem; color:#5A6B80; text-transform:uppercase;
+                                        letter-spacing:0.04em; font-weight:500;">Giá trị thực tế</div>
+                            <div style="color:#0A2540; margin-top:0.15rem; font-family:'Courier New',monospace;
+                                        font-size:0.85rem;">{actual_str}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:0.72rem; color:#5A6B80; text-transform:uppercase;
+                                        letter-spacing:0.04em; font-weight:500;">Điểm</div>
+                            <div style="font-weight:600; color:#0A2540; margin-top:0.15rem;">
+                                {v.points}<span style="color:#5A6B80; font-weight:400; font-size:0.85rem;"> / {v.max_points}</span>
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:0.72rem; color:#5A6B80; text-transform:uppercase;
+                                        letter-spacing:0.04em; font-weight:500;">Tỷ lệ</div>
+                            <div style="font-weight:700; color:{var_color}; margin-top:0.15rem;">{var_pct:.0f}%</div>
+                        </div>
+                    </div>
+                    <div style="background:#F0F2F5; height:5px; border-radius:3px;
+                                margin-top:0.6rem; overflow:hidden;">
+                        <div style="background:{var_color}; height:100%; width:{var_pct}%;
+                                    border-radius:3px;"></div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
 
 def render_hard_rules_and_docs(decision):
