@@ -1167,6 +1167,7 @@ def prev_step(): st.session_state.step -= 1
 # HERO HEADER
 # ============================================================
 
+st.markdown("<h1 style='color:red'>HELLO</h1>", unsafe_allow_html=True)
 def render_hero(scorecard):
     logo_html = ""
     if LOGO_FULL_B64:
